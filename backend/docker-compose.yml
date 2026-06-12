@@ -1,0 +1,95 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: smartreach
+      POSTGRES_USER: smartreach
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartreach -d smartreach"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  crm-api:
+    build: ./crm_service
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://smartreach:${DB_PASSWORD:-password}@postgres:5432/smartreach
+      - REDIS_URL=redis://redis:6379
+      - AI_SERVICE_URL=http://ai-service:8001
+      - CHANNEL_SERVICE_URL=http://channel-service:8002
+      - SECRET_KEY=${SECRET_KEY:-change_this_to_a_long_random_string}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  crm-worker:
+    build: ./crm_service
+    command: celery -A app.workers.celery_app worker --loglevel=info
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://smartreach:${DB_PASSWORD:-password}@postgres:5432/smartreach
+      - REDIS_URL=redis://redis:6379
+      - CHANNEL_SERVICE_URL=http://channel-service:8002
+      - SECRET_KEY=${SECRET_KEY:-change_this_to_a_long_random_string}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  ai-service:
+    build: ./ai_service
+    ports:
+      - "8001:8001"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://smartreach:${DB_PASSWORD:-password}@postgres:5432/smartreach
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  channel-service:
+    build: ./channel_service
+    ports:
+      - "8002:8002"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - CRM_WEBHOOK_URL=http://crm-api:8000/webhooks/communication-event
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  channel-worker:
+    build: ./channel_service
+    command: celery -A app.workers.celery_app worker --loglevel=info
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - CRM_WEBHOOK_URL=http://crm-api:8000/webhooks/communication-event
+    depends_on:
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

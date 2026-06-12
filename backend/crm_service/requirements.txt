@@ -1,0 +1,15 @@
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+pydantic[email]==2.10.3
+pydantic-settings==2.6.1
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+alembic==1.14.0
+pgvector==0.3.6
+redis==5.2.1
+celery==5.4.0
+httpx==0.28.1
+slowapi==0.1.9
+python-multipart==0.0.19
+structlog==24.4.0
+python-json-logger==2.0.7

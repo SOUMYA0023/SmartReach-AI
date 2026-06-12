@@ -39,3 +39,24 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Python virtual envs
+venv/
+.venv/
+env/
+
+# Pytest
+.pytest_cache/
+
+# Coverage
+htmlcov/
+.coverage
+
+# Alembic
+alembic/versions/__pycache__/
