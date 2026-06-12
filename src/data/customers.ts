@@ -1,0 +1,57 @@
+import { Customer, Order } from "@/types";
+
+export const customers: Customer[] = [
+  { id: "cust-001", name: "Priya Sharma", email: "priya.sharma@gmail.com", phone: "+91 98765 43210", city: "Mumbai", totalSpend: 47500, totalOrders: 23, lastOrderDate: "2026-06-08", segment: "Champions", engagementScore: 94, preferredChannel: "WhatsApp", rfmLabel: "High", joinDate: "2024-03-15" },
+  { id: "cust-002", name: "Rahul Verma", email: "rahul.v@outlook.com", phone: "+91 87654 32109", city: "Delhi", totalSpend: 32000, totalOrders: 15, lastOrderDate: "2026-06-05", segment: "Loyal", engagementScore: 82, preferredChannel: "Email", rfmLabel: "High", joinDate: "2024-06-22" },
+  { id: "cust-003", name: "Ananya Patel", email: "ananya.p@yahoo.com", phone: "+91 76543 21098", city: "Bangalore", totalSpend: 58900, totalOrders: 31, lastOrderDate: "2026-06-10", segment: "Champions", engagementScore: 97, preferredChannel: "WhatsApp", rfmLabel: "High", joinDate: "2024-01-08" },
+  { id: "cust-004", name: "Vikram Singh", email: "vikram.singh@gmail.com", phone: "+91 65432 10987", city: "Hyderabad", totalSpend: 12300, totalOrders: 7, lastOrderDate: "2026-05-20", segment: "Potential Loyalist", engagementScore: 65, preferredChannel: "SMS", rfmLabel: "Medium", joinDate: "2025-02-14" },
+  { id: "cust-005", name: "Sneha Reddy", email: "sneha.r@gmail.com", phone: "+91 54321 09876", city: "Chennai", totalSpend: 8700, totalOrders: 4, lastOrderDate: "2026-04-12", segment: "At Risk", engagementScore: 38, preferredChannel: "Email", rfmLabel: "Low", joinDate: "2025-01-30" },
+  { id: "cust-006", name: "Arjun Nair", email: "arjun.nair@hotmail.com", phone: "+91 43210 98765", city: "Kochi", totalSpend: 21500, totalOrders: 12, lastOrderDate: "2026-06-01", segment: "Loyal", engagementScore: 76, preferredChannel: "WhatsApp", rfmLabel: "High", joinDate: "2024-09-05" },
+  { id: "cust-007", name: "Meera Joshi", email: "meera.j@gmail.com", phone: "+91 32109 87654", city: "Pune", totalSpend: 5200, totalOrders: 3, lastOrderDate: "2026-02-18", segment: "Dormant", engagementScore: 22, preferredChannel: "SMS", rfmLabel: "Low", joinDate: "2025-04-20" },
+  { id: "cust-008", name: "Karthik Iyer", email: "karthik.i@gmail.com", phone: "+91 21098 76543", city: "Mumbai", totalSpend: 41200, totalOrders: 19, lastOrderDate: "2026-06-09", segment: "Champions", engagementScore: 91, preferredChannel: "Email", rfmLabel: "High", joinDate: "2024-04-12" },
+  { id: "cust-009", name: "Divya Gupta", email: "divya.g@outlook.com", phone: "+91 10987 65432", city: "Jaipur", totalSpend: 15800, totalOrders: 9, lastOrderDate: "2026-05-28", segment: "Potential Loyalist", engagementScore: 61, preferredChannel: "WhatsApp", rfmLabel: "Medium", joinDate: "2025-03-08" },
+  { id: "cust-010", name: "Aditya Kumar", email: "aditya.k@gmail.com", phone: "+91 09876 54321", city: "Lucknow", totalSpend: 3400, totalOrders: 2, lastOrderDate: "2026-01-05", segment: "Lost", engagementScore: 12, preferredChannel: "SMS", rfmLabel: "Low", joinDate: "2025-06-15" },
+  { id: "cust-011", name: "Riya Chakraborty", email: "riya.c@gmail.com", phone: "+91 98112 34567", city: "Kolkata", totalSpend: 27600, totalOrders: 14, lastOrderDate: "2026-06-07", segment: "Loyal", engagementScore: 79, preferredChannel: "Email", rfmLabel: "High", joinDate: "2024-07-19" },
+  { id: "cust-012", name: "Sanjay Mehta", email: "sanjay.m@yahoo.com", phone: "+91 87223 45678", city: "Ahmedabad", totalSpend: 19300, totalOrders: 11, lastOrderDate: "2026-05-15", segment: "Potential Loyalist", engagementScore: 58, preferredChannel: "Push", rfmLabel: "Medium", joinDate: "2025-01-10" },
+  { id: "cust-013", name: "Nisha Agarwal", email: "nisha.a@gmail.com", phone: "+91 76334 56789", city: "Delhi", totalSpend: 62100, totalOrders: 35, lastOrderDate: "2026-06-11", segment: "Champions", engagementScore: 98, preferredChannel: "WhatsApp", rfmLabel: "High", joinDate: "2023-11-28" },
+  { id: "cust-014", name: "Rohan Deshmukh", email: "rohan.d@outlook.com", phone: "+91 65445 67890", city: "Pune", totalSpend: 9800, totalOrders: 5, lastOrderDate: "2026-03-22", segment: "At Risk", engagementScore: 35, preferredChannel: "Email", rfmLabel: "Low", joinDate: "2025-05-03" },
+  { id: "cust-015", name: "Ishita Banerjee", email: "ishita.b@gmail.com", phone: "+91 54556 78901", city: "Bangalore", totalSpend: 36400, totalOrders: 18, lastOrderDate: "2026-06-04", segment: "Loyal", engagementScore: 85, preferredChannel: "WhatsApp", rfmLabel: "High", joinDate: "2024-05-17" },
+  { id: "cust-016", name: "Manish Tiwari", email: "manish.t@hotmail.com", phone: "+91 43667 89012", city: "Indore", totalSpend: 7100, totalOrders: 4, lastOrderDate: "2026-04-30", segment: "New Customers", engagementScore: 45, preferredChannel: "SMS", rfmLabel: "Medium", joinDate: "2026-01-22" },
+  { id: "cust-017", name: "Pooja Krishnan", email: "pooja.k@gmail.com", phone: "+91 32778 90123", city: "Chennai", totalSpend: 44800, totalOrders: 22, lastOrderDate: "2026-06-06", segment: "Champions", engagementScore: 92, preferredChannel: "Email", rfmLabel: "High", joinDate: "2024-02-09" },
+  { id: "cust-018", name: "Amit Saxena", email: "amit.s@yahoo.com", phone: "+91 21889 01234", city: "Chandigarh", totalSpend: 2800, totalOrders: 2, lastOrderDate: "2025-12-10", segment: "Lost", engagementScore: 8, preferredChannel: "SMS", rfmLabel: "Low", joinDate: "2025-08-14" },
+  { id: "cust-019", name: "Kavya Nambiar", email: "kavya.n@gmail.com", phone: "+91 10990 12345", city: "Kochi", totalSpend: 18200, totalOrders: 10, lastOrderDate: "2026-05-25", segment: "Potential Loyalist", engagementScore: 63, preferredChannel: "WhatsApp", rfmLabel: "Medium", joinDate: "2025-04-02" },
+  { id: "cust-020", name: "Suresh Pillai", email: "suresh.p@outlook.com", phone: "+91 91234 56789", city: "Trivandrum", totalSpend: 29700, totalOrders: 16, lastOrderDate: "2026-06-02", segment: "Loyal", engagementScore: 77, preferredChannel: "Email", rfmLabel: "High", joinDate: "2024-08-11" },
+  { id: "cust-021", name: "Tanvi Malhotra", email: "tanvi.m@gmail.com", phone: "+91 82345 67890", city: "Delhi", totalSpend: 51300, totalOrders: 27, lastOrderDate: "2026-06-09", segment: "Champions", engagementScore: 95, preferredChannel: "WhatsApp", rfmLabel: "High", joinDate: "2024-01-25" },
+  { id: "cust-022", name: "Gaurav Mishra", email: "gaurav.m@hotmail.com", phone: "+91 73456 78901", city: "Varanasi", totalSpend: 6500, totalOrders: 3, lastOrderDate: "2026-03-15", segment: "Dormant", engagementScore: 25, preferredChannel: "SMS", rfmLabel: "Low", joinDate: "2025-07-08" },
+  { id: "cust-023", name: "Lakshmi Rao", email: "lakshmi.r@gmail.com", phone: "+91 64567 89012", city: "Hyderabad", totalSpend: 38900, totalOrders: 20, lastOrderDate: "2026-06-10", segment: "Champions", engagementScore: 93, preferredChannel: "Email", rfmLabel: "High", joinDate: "2024-03-30" },
+  { id: "cust-024", name: "Nikhil Jain", email: "nikhil.j@yahoo.com", phone: "+91 55678 90123", city: "Mumbai", totalSpend: 14200, totalOrders: 8, lastOrderDate: "2026-05-18", segment: "Potential Loyalist", engagementScore: 56, preferredChannel: "Push", rfmLabel: "Medium", joinDate: "2025-06-20" },
+  { id: "cust-025", name: "Shruti Pandey", email: "shruti.p@gmail.com", phone: "+91 46789 01234", city: "Bhopal", totalSpend: 11500, totalOrders: 6, lastOrderDate: "2026-04-25", segment: "New Customers", engagementScore: 48, preferredChannel: "WhatsApp", rfmLabel: "Medium", joinDate: "2026-02-11" },
+  { id: "cust-026", name: "Deepak Chandra", email: "deepak.c@outlook.com", phone: "+91 37890 12345", city: "Bangalore", totalSpend: 23400, totalOrders: 13, lastOrderDate: "2026-06-03", segment: "Loyal", engagementScore: 74, preferredChannel: "Email", rfmLabel: "High", joinDate: "2024-10-15" },
+  { id: "cust-027", name: "Anjali Menon", email: "anjali.m@gmail.com", phone: "+91 28901 23456", city: "Kochi", totalSpend: 4100, totalOrders: 2, lastOrderDate: "2026-02-02", segment: "Dormant", engagementScore: 18, preferredChannel: "SMS", rfmLabel: "Low", joinDate: "2025-09-18" },
+  { id: "cust-028", name: "Rajesh Kapoor", email: "rajesh.k@hotmail.com", phone: "+91 19012 34567", city: "Delhi", totalSpend: 55700, totalOrders: 29, lastOrderDate: "2026-06-08", segment: "Champions", engagementScore: 96, preferredChannel: "WhatsApp", rfmLabel: "High", joinDate: "2023-12-05" },
+  { id: "cust-029", name: "Swati Kulkarni", email: "swati.k@gmail.com", phone: "+91 90123 45678", city: "Pune", totalSpend: 16700, totalOrders: 9, lastOrderDate: "2026-05-22", segment: "Potential Loyalist", engagementScore: 59, preferredChannel: "Email", rfmLabel: "Medium", joinDate: "2025-02-28" },
+  { id: "cust-030", name: "Vivek Bhatia", email: "vivek.b@yahoo.com", phone: "+91 81234 56789", city: "Chandigarh", totalSpend: 7800, totalOrders: 4, lastOrderDate: "2026-04-08", segment: "At Risk", engagementScore: 32, preferredChannel: "Push", rfmLabel: "Low", joinDate: "2025-08-22" },
+];
+
+export const orders: Order[] = [
+  { id: "ord-001", customerId: "cust-001", date: "2026-06-08", amount: 2450, items: ["Organic Green Tea", "Honey"], status: "completed" },
+  { id: "ord-002", customerId: "cust-001", date: "2026-05-30", amount: 1800, items: ["Coffee Beans", "Almond Milk"], status: "completed" },
+  { id: "ord-003", customerId: "cust-001", date: "2026-05-15", amount: 3200, items: ["Skincare Set", "Moisturizer"], status: "completed" },
+  { id: "ord-004", customerId: "cust-003", date: "2026-06-10", amount: 4500, items: ["Premium Face Serum", "Night Cream", "Toner"], status: "completed" },
+  { id: "ord-005", customerId: "cust-003", date: "2026-06-02", amount: 2100, items: ["Shampoo", "Conditioner"], status: "completed" },
+  { id: "ord-006", customerId: "cust-008", date: "2026-06-09", amount: 3800, items: ["Protein Powder", "Vitamin D3"], status: "completed" },
+  { id: "ord-007", customerId: "cust-013", date: "2026-06-11", amount: 5200, items: ["Designer Handbag", "Wallet"], status: "completed" },
+  { id: "ord-008", customerId: "cust-005", date: "2026-04-12", amount: 1200, items: ["Face Wash"], status: "completed" },
+  { id: "ord-009", customerId: "cust-007", date: "2026-02-18", amount: 900, items: ["Lip Balm", "Sunscreen"], status: "completed" },
+  { id: "ord-010", customerId: "cust-010", date: "2026-01-05", amount: 1500, items: ["Hair Oil"], status: "refunded" },
+];
+
+export const segmentCounts = {
+  Champions: customers.filter((c) => c.segment === "Champions").length,
+  Loyal: customers.filter((c) => c.segment === "Loyal").length,
+  "Potential Loyalist": customers.filter((c) => c.segment === "Potential Loyalist").length,
+  "New Customers": customers.filter((c) => c.segment === "New Customers").length,
+  "At Risk": customers.filter((c) => c.segment === "At Risk").length,
+  Dormant: customers.filter((c) => c.segment === "Dormant").length,
+  Lost: customers.filter((c) => c.segment === "Lost").length,
+};
