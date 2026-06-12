@@ -37,10 +37,14 @@ export function CampaignFunnel() {
                 </span>
               </div>
             </div>
-            <div className="h-[3px] overflow-hidden bg-[#F0EDE8]">
+            <div className="h-[3px] min-h-[3px] max-h-[3px] w-full overflow-hidden rounded-none bg-[#F0EDE8] leading-none">
               <motion.div
-                className="h-full"
-                style={{ background: fills[index] || "#111110" }}
+                className="block rounded-none"
+                style={{
+                  background: fills[index] || "#111110",
+                  height: "3px",
+                  maxHeight: "3px",
+                }}
                 initial={{ width: 0 }}
                 animate={{ width: `${step.percentage}%` }}
                 transition={{

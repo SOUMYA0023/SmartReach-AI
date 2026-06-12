@@ -26,7 +26,7 @@ export default function DashboardPage() {
       >
         <QuickActions />
 
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+        <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
           {dashboardKpis.map((kpi, index) => (
             <KpiCard key={kpi.label} metric={kpi} index={index} />
           ))}

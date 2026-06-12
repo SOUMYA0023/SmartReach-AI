@@ -233,3 +233,9 @@
   font-family: var(--font-mono), "DM Mono", monospace;
   font-variant-numeric: tabular-nums;
 }
+
+.app-sidebar {
+  background-color: #111110;
+  color: #ffffff;
+  border-right: 1px solid #1c1c1a;
+}

@@ -31,7 +31,8 @@ export function SidebarNav() {
       initial={{ opacity: 0, x: "-100%" }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
-      className="flex h-screen w-[220px] shrink-0 flex-col bg-[#111110]"
+      className="app-sidebar z-10 flex h-screen w-[220px] shrink-0 flex-col"
+      style={{ backgroundColor: "#111110" }}
     >
       {/* Logo */}
       <div className="border-b border-white/[0.08] px-4 pb-3.5 pt-5">

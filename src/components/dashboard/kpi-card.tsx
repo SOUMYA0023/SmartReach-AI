@@ -56,14 +56,14 @@ export function KpiCard({ metric, index }: { metric: KpiMetric; index: number })
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1, duration: 0.3, ease: "easeOut" }}
       className={cn(
-        "rounded-[2px] border border-[var(--color-border)] bg-white px-3 py-3.5",
+        "min-w-0 rounded-[2px] border border-[var(--color-border)] bg-white px-2.5 py-3",
         "cursor-default transition-colors duration-150 hover:border-[#BFBCB4]"
       )}
     >
       <p className="mb-2 font-body text-[9px] uppercase tracking-[0.08em] text-[var(--color-muted)]">
         {metric.label}
       </p>
-      <p className="font-mono text-[24px] font-medium tracking-[-0.02em] text-[#111110] tabular-nums">
+      <p className="overflow-hidden text-ellipsis whitespace-nowrap font-mono text-[20px] font-medium leading-none tracking-[-0.02em] text-[#111110] tabular-nums">
         <KpiValue metric={metric} delay={countDelay} />
       </p>
       {metric.change !== 0 && (
