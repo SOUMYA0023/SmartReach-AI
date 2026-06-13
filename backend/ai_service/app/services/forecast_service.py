@@ -64,7 +64,9 @@ class ForecastService:
         opened = int(delivered * open_rate)
         clicked = int(opened * ctr)
         converted = int(clicked * conversion_rate)
-        expected_revenue = converted * aov
+        expected_revenue = round(
+            audience_size * rates["delivery"] * open_rate * ctr * conversion_rate * aov, 2
+        )
 
         return {
             "open_rate": round(open_rate * 100, 2),
