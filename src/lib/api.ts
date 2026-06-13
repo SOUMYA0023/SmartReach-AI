@@ -64,7 +64,7 @@ export const api = {
 
   // Campaign generation (AI service, proxied via CRM)
   generateCampaign: (goal: string) =>
-    fetchJson<ApiGenerateResult>(`${CRM_BASE}/ai/generate-campaign`, {
+    fetchJson<ApiGenerateResult>(`${CRM_BASE}/campaigns/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ goal }),
