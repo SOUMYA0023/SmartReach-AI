@@ -20,6 +20,10 @@ export const api = {
       total_converted: number;
       top_performing_channel: string;
       segment_distribution: Record<string, number>;
+      total_sent?: number;
+      total_delivered?: number;
+      total_opened?: number;
+      total_clicked?: number;
     }>(`${CRM_BASE}/analytics/dashboard`),
 
   // Campaigns

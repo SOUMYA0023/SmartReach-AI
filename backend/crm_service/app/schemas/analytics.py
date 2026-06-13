@@ -32,3 +32,7 @@ class DashboardResponse(BaseModel):
     total_converted: int
     top_performing_channel: str
     segment_distribution: dict[str, int]
+    total_sent: int = 0
+    total_delivered: int = 0
+    total_opened: int = 0
+    total_clicked: int = 0

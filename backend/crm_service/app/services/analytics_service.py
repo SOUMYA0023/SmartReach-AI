@@ -76,23 +76,33 @@ class AnalyticsService:
         segment_distribution = await self.customer_repo.segment_distribution()
 
         campaigns, _ = await self.campaign_repo.list_all(limit=1000)
-        total_opened = 0
+        total_sent = 0
         total_delivered = 0
+        total_opened = 0
+        total_clicked = 0
         total_converted = 0
         channel_performance: dict[str, dict[str, int]] = {}
 
         for campaign in campaigns:
             status_counts = await self.comm_repo.status_counts(campaign.id)
+            sent = status_counts.get("SENT", 0) + status_counts.get("DELIVERED", 0) + status_counts.get(
+                "OPENED", 0
+            ) + status_counts.get("CLICKED", 0) + status_counts.get("CONVERTED", 0)
             delivered = status_counts.get("DELIVERED", 0) + status_counts.get("OPENED", 0) + status_counts.get(
                 "CLICKED", 0
             ) + status_counts.get("CONVERTED", 0)
             opened = status_counts.get("OPENED", 0) + status_counts.get("CLICKED", 0) + status_counts.get(
                 "CONVERTED", 0
             )
+            clicked = status_counts.get("CLICKED", 0) + status_counts.get("CONVERTED", 0)
             converted = status_counts.get("CONVERTED", 0)
+
+            total_sent += sent
             total_delivered += delivered
             total_opened += opened
+            total_clicked += clicked
             total_converted += converted
+
             if campaign.channel not in channel_performance:
                 channel_performance[campaign.channel] = {"opened": 0, "delivered": 0}
             channel_performance[campaign.channel]["opened"] += opened
@@ -114,4 +124,8 @@ class AnalyticsService:
             "total_converted": total_converted,
             "top_performing_channel": top_channel,
             "segment_distribution": segment_distribution,
+            "total_sent": total_sent,
+            "total_delivered": total_delivered,
+            "total_opened": total_opened,
+            "total_clicked": total_clicked,
         }

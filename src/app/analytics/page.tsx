@@ -50,30 +50,6 @@ function PieTooltip({ active, payload }: { active?: boolean; payload?: Array<{ n
   );
 }
 
-// ─── Static fallback data for charts (used when backend provides no series) ──
-
-const STATIC_FUNNEL = [
-  { label: "Sent", value: 0, percentage: 100, color: "#F5A623" },
-  { label: "Delivered", value: 0, percentage: 95.6, color: "#D99518" },
-  { label: "Opened", value: 0, percentage: 57.3, color: "#BFBCB4" },
-  { label: "Clicked", value: 0, percentage: 18.1, color: "#8F8B82" },
-  { label: "Converted", value: 0, percentage: 6.6, color: "#111110" },
-];
-
-const CHANNEL_MIX = [
-  { name: "WhatsApp", value: 35, fill: "#2F855A" },
-  { name: "Email", value: 38, fill: "#111110" },
-  { name: "SMS", value: 18, fill: "#6B6860" },
-  { name: "Push", value: 9, fill: "#F5A623" },
-];
-
-const CHANNEL_METRICS = [
-  { channel: "WhatsApp", "Open Rate": 68, CTR: 24, "Conv Rate": 9 },
-  { channel: "Email", "Open Rate": 42, CTR: 15, "Conv Rate": 5 },
-  { channel: "SMS", "Open Rate": 89, CTR: 28, "Conv Rate": 15 },
-  { channel: "Push", "Open Rate": 55, CTR: 19, "Conv Rate": 6 },
-];
-
 // ─── Main Page ──────────────────────────────────────────────────────────────
 
 export default function AnalyticsPage() {
@@ -115,7 +91,7 @@ export default function AnalyticsPage() {
     CTR: Math.round(v.ctrTotal / v.count),
     "Conv Rate": Math.round(v.convTotal / v.count),
   }));
-  const barData = liveChannelMetrics.length > 0 ? liveChannelMetrics : CHANNEL_METRICS;
+  const barData = liveChannelMetrics;
 
   // Segment distribution → pie chart
   const segDistribution = dashboardData?.segment_distribution ?? {};
@@ -126,7 +102,47 @@ export default function AnalyticsPage() {
     value: Math.round((val / totalSeg) * 100),
     fill: COLORS[i % COLORS.length],
   }));
-  const pieData = segPieData.length > 0 ? segPieData : CHANNEL_MIX;
+  const pieData = segPieData;
+
+  // Dynamic funnel calculation
+  const totalSent = dashboardData?.total_sent ?? 0;
+  const totalDelivered = dashboardData?.total_delivered ?? 0;
+  const totalOpened = dashboardData?.total_opened ?? 0;
+  const totalClicked = dashboardData?.total_clicked ?? 0;
+  const totalConverted = dashboardData?.total_converted ?? 0;
+
+  const funnelData = [
+    {
+      label: "Sent",
+      value: totalSent,
+      percentage: totalSent > 0 ? 100 : 0,
+      color: "#F5A623",
+    },
+    {
+      label: "Delivered",
+      value: totalDelivered,
+      percentage: totalSent > 0 ? Math.round((totalDelivered / totalSent) * 1000) / 10 : 0,
+      color: "#D99518",
+    },
+    {
+      label: "Opened",
+      value: totalOpened,
+      percentage: totalSent > 0 ? Math.round((totalOpened / totalSent) * 1000) / 10 : 0,
+      color: "#BFBCB4",
+    },
+    {
+      label: "Clicked",
+      value: totalClicked,
+      percentage: totalSent > 0 ? Math.round((totalClicked / totalSent) * 1000) / 10 : 0,
+      color: "#8F8B82",
+    },
+    {
+      label: "Converted",
+      value: totalConverted,
+      percentage: totalSent > 0 ? Math.round((totalConverted / totalSent) * 1000) / 10 : 0,
+      color: "#111110",
+    },
+  ];
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
@@ -189,15 +205,7 @@ export default function AnalyticsPage() {
                     <span className="font-mono text-xs text-[var(--color-signal)]">+{card.change}%</span>
                   </>
                 )}
-                {card.sublabel && (
-                  <span className="text-xs text-text-muted">{card.sublabel}</span>
-                )}
-              </div>
-            </motion.div>
-          ))}
-        </motion.div>
-
-        {/* Funnel (from campaign data) */}
+                {car        {/* Funnel (from campaign data) */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -205,26 +213,32 @@ export default function AnalyticsPage() {
           className="rounded-[2px] border border-[var(--color-border)] bg-white p-6 transition-colors duration-150 hover:border-[#BFBCB4]"
         >
           <h3 className="mb-1 font-body text-xs font-semibold text-[var(--color-ink)]">Conversion Funnel</h3>
-          <p className="text-xs text-text-muted mb-6">Aggregate predicted campaign performance</p>
+          <p className="text-xs text-text-muted mb-6">Aggregate campaign performance</p>
 
-          <div className="flex items-end gap-4 h-40">
-            {STATIC_FUNNEL.map((step, index) => (
-              <div key={step.label} className="flex-1 flex flex-col items-center gap-2">
-                <span className="text-xs font-semibold text-text-primary">
-                  {step.value > 0 ? formatNumber(step.value) : step.percentage + "%"}
-                </span>
-                <motion.div
-                  className="w-full rounded-[2px]"
-                  style={{ background: step.color }}
-                  initial={{ height: 0 }}
-                  animate={{ height: `${(step.percentage / 100) * 140}px` }}
-                  transition={{ delay: 0.2 + index * 0.1, duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
-                />
-                <span className="text-[10px] text-text-muted">{step.label}</span>
-                <span className="text-[10px] font-medium text-text-primary">{step.percentage}%</span>
-              </div>
-            ))}
-          </div>
+          {totalSent === 0 ? (
+            <div className="flex h-40 items-center justify-center border border-dashed border-border-subtle rounded-[2px]">
+              <p className="text-sm text-text-muted">No campaign data yet</p>
+            </div>
+          ) : (
+            <div className="flex items-end gap-4 h-40">
+              {funnelData.map((step, index) => (
+                <div key={step.label} className="flex-1 flex flex-col items-center gap-2">
+                  <span className="text-xs font-semibold text-text-primary">
+                    {formatNumber(step.value)}
+                  </span>
+                  <motion.div
+                    className="w-full rounded-[2px]"
+                    style={{ background: step.color }}
+                    initial={{ height: 0 }}
+                    animate={{ height: `${(step.percentage / 100) * 140}px` }}
+                    transition={{ delay: 0.2 + index * 0.1, duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
+                  />
+                  <span className="text-[10px] text-text-muted">{step.label}</span>
+                  <span className="text-[10px] font-medium text-text-primary">{step.percentage}%</span>
+                </div>
+              ))}
+            </div>
+          )}
         </motion.div>
 
         {/* Charts Grid */}
@@ -237,22 +251,27 @@ export default function AnalyticsPage() {
             className="rounded-[2px] border border-[var(--color-border)] bg-white p-6 transition-colors duration-150 hover:border-[#BFBCB4]"
           >
             <h3 className="mb-1 font-body text-xs font-semibold text-[var(--color-ink)]">Channel Performance</h3>
-            <p className="text-xs text-text-muted mb-5">
-              {liveChannelMetrics.length > 0 ? "Live predicted rates by channel" : "Benchmark rates by channel"}
-            </p>
-            <div className="h-[240px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={barData} barGap={4}>
-                  <CartesianGrid strokeDasharray="4 4" stroke="#E0DDD6" vertical={false} />
-                  <XAxis dataKey="channel" tick={{ fontSize: 10, fill: "#9B9890", fontFamily: "var(--font-mono)" }} tickLine={false} axisLine={false} />
-                  <YAxis tick={{ fontSize: 10, fill: "#9B9890", fontFamily: "var(--font-mono)" }} tickLine={false} axisLine={false} width={30} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="Open Rate" fill="#111110" radius={[2, 2, 0, 0]} />
-                  <Bar dataKey="CTR" fill="#F5A623" radius={[2, 2, 0, 0]} />
-                  <Bar dataKey="Conv Rate" fill="#6B6860" radius={[2, 2, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            <p className="text-xs text-text-muted mb-5">Live predicted rates by channel</p>
+            
+            {barData.length === 0 ? (
+              <div className="flex h-[240px] items-center justify-center border border-dashed border-border-subtle rounded-[2px]">
+                <p className="text-sm text-text-muted">No campaign data yet</p>
+              </div>
+            ) : (
+              <div className="h-[240px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={barData} barGap={4}>
+                    <CartesianGrid strokeDasharray="4 4" stroke="#E0DDD6" vertical={false} />
+                    <XAxis dataKey="channel" tick={{ fontSize: 10, fill: "#9B9890", fontFamily: "var(--font-mono)" }} tickLine={false} axisLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: "#9B9890", fontFamily: "var(--font-mono)" }} tickLine={false} axisLine={false} width={30} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Bar dataKey="Open Rate" fill="#111110" radius={[2, 2, 0, 0]} />
+                    <Bar dataKey="CTR" fill="#F5A623" radius={[2, 2, 0, 0]} />
+                    <Bar dataKey="Conv Rate" fill="#6B6860" radius={[2, 2, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </motion.div>
 
           {/* Segment Distribution */}
@@ -262,51 +281,54 @@ export default function AnalyticsPage() {
             transition={{ delay: 0.3 }}
             className="rounded-[2px] border border-[var(--color-border)] bg-white p-6 transition-colors duration-150 hover:border-[#BFBCB4]"
           >
-            <h3 className="mb-1 font-body text-xs font-semibold text-[var(--color-ink)]">
-              {segPieData.length > 0 ? "Customer Segments" : "Channel Mix"}
-            </h3>
-            <p className="text-xs text-text-muted mb-4">
-              {segPieData.length > 0 ? "Live segment distribution" : "Distribution of campaigns sent"}
-            </p>
-            <div className="h-[200px] relative">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={55}
-                    outerRadius={80}
-                    dataKey="value"
-                    strokeWidth={0}
-                  >
-                    {pieData.map((entry, i) => (
-                      <Cell key={i} fill={entry.fill} />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<PieTooltip />} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-text-primary">
-                    {formatNumber(dashboardData?.total_customers ?? 0)}
-                  </p>
-                  <p className="text-[10px] text-text-muted">
-                    {segPieData.length > 0 ? "Total Customers" : "Benchmark"}
-                  </p>
-                </div>
+            <h3 className="mb-1 font-body text-xs font-semibold text-[var(--color-ink)]">Customer Segments</h3>
+            <p className="text-xs text-text-muted mb-4">Live segment distribution</p>
+
+            {pieData.length === 0 ? (
+              <div className="flex h-[200px] items-center justify-center border border-dashed border-border-subtle rounded-[2px]">
+                <p className="text-sm text-text-muted">No customer data yet</p>
               </div>
-            </div>
-            <div className="flex flex-wrap gap-3 justify-center mt-2">
-              {pieData.map((item) => (
-                <div key={item.name} className="flex items-center gap-1.5 text-xs">
-                  <div className="w-2 h-2 rounded-full" style={{ background: item.fill }} />
-                  <span className="text-text-muted">{item.name}</span>
-                  <span className="text-text-primary font-medium">{item.value}%</span>
+            ) : (
+              <>
+                <div className="h-[200px] relative">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={pieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={55}
+                        outerRadius={80}
+                        dataKey="value"
+                        strokeWidth={0}
+                      >
+                        {pieData.map((entry, i) => (
+                          <Cell key={i} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                      <Tooltip content={<PieTooltip />} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-text-primary">
+                        {formatNumber(dashboardData?.total_customers ?? 0)}
+                      </p>
+                      <p className="text-[10px] text-text-muted">Total Customers</p>
+                    </div>
+                  </div>
                 </div>
-              ))}
-            </div>
+                <div className="flex flex-wrap gap-3 justify-center mt-2">
+                  {pieData.map((item) => (
+                    <div key={item.name} className="flex items-center gap-1.5 text-xs">
+                      <div className="w-2 h-2 rounded-full" style={{ background: item.fill }} />
+                      <span className="text-text-muted">{item.name}</span>
+                      <span className="text-text-primary font-medium">{item.value}%</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </motion.div>
         </div>
       </div>

@@ -13,16 +13,23 @@ import { api } from "@/lib/api";
 import type { ApiCustomer } from "@/lib/api";
 
 const segmentColors: Record<string, string> = {
-  Champions: "bg-[var(--color-signal-dim)] text-[var(--color-signal)]",
-  Loyal: "bg-[#E7F5EF] text-success",
+  VIP: "bg-amber-100 text-amber-800 border border-amber-200",
+  Loyal: "bg-[#E7F5EF] text-success border border-success-subtle",
   "Potential Loyalist": "bg-surface-elevated text-text-primary border border-border-subtle",
-  "New Customers": "bg-success/15 text-success",
-  "At Risk": "bg-warning/15 text-warning",
-  Dormant: "bg-[var(--color-signal-dim)] text-[var(--color-signal)]",
-  Lost: "bg-danger/15 text-danger",
+  New: "bg-success/15 text-success border border-success-subtle/30",
+  "At Risk": "bg-warning/15 text-warning border border-warning-subtle/30",
+  Dormant: "bg-[var(--color-signal-dim)] text-[var(--color-signal)] border border-danger-subtle/30",
 };
 
-const segments = ["Champions", "Loyal", "Potential Loyalist", "New Customers", "At Risk", "Dormant", "Lost"];
+const SEGMENTS = [
+  { label: "All", value: "" },
+  { label: "VIP", value: "VIP" },
+  { label: "Loyal", value: "Loyal" },
+  { label: "Potential Loyalist", value: "Potential Loyalist" },
+  { label: "New", value: "New" },
+  { label: "At Risk", value: "At Risk" },
+  { label: "Dormant", value: "Dormant" },
+];
 
 function EngagementBar({ score }: { score: number }) {
   const color = score >= 70 ? "bg-success" : score >= 40 ? "bg-warning" : "bg-danger";
@@ -51,7 +58,7 @@ function CustomerDetailDrawer({
   onClose: () => void;
 }) {
   if (!customer) return null;
-  const segment = customer.segment ?? "New Customers";
+  const segment = customer.segment ?? "New";
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
@@ -128,13 +135,13 @@ function CustomerDetailDrawer({
 
 export default function CustomersPage() {
   const [search, setSearch] = useState("");
-  const [selectedSegment, setSelectedSegment] = useState<string>("All");
+  const [selectedSegment, setSelectedSegment] = useState<string>("");
   const [selectedCustomer, setSelectedCustomer] = useState<ApiCustomer | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["customers"],
-    queryFn: () => api.getCustomers({ limit: 500 }),
+    queryKey: ["customers", selectedSegment],
+    queryFn: () => api.getCustomers({ limit: 500, segment: selectedSegment || undefined }),
     refetchInterval: 60_000,
   });
 
@@ -147,10 +154,9 @@ export default function CustomersPage() {
         c.name.toLowerCase().includes(search.toLowerCase()) ||
         c.email.toLowerCase().includes(search.toLowerCase()) ||
         (c.city ?? "").toLowerCase().includes(search.toLowerCase());
-      const matchesSegment = selectedSegment === "All" || c.segment === selectedSegment;
-      return matchesSearch && matchesSegment;
+      return matchesSearch;
     });
-  }, [search, selectedSegment, customers]);
+  }, [search, customers]);
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
@@ -184,29 +190,18 @@ export default function CustomersPage() {
           </div>
 
           <div className="flex flex-wrap border-b border-[var(--color-border)]">
-            <button
-              onClick={() => setSelectedSegment("All")}
-              className={cn(
-                "border-b-2 px-4 py-2 font-body text-xs transition-colors duration-150",
-                selectedSegment === "All"
-                  ? "border-[var(--color-ink)] font-medium text-[var(--color-ink)]"
-                  : "border-transparent text-[var(--color-muted)] hover:text-[var(--color-ink)]"
-              )}
-            >
-              All ({customers.length})
-            </button>
-            {segments.map((seg) => (
+            {SEGMENTS.map((seg) => (
               <button
-                key={seg}
-                onClick={() => setSelectedSegment(seg)}
+                key={seg.label}
+                onClick={() => setSelectedSegment(seg.value)}
                 className={cn(
                   "border-b-2 px-4 py-2 font-body text-xs transition-colors duration-150",
-                  selectedSegment === seg
+                  selectedSegment === seg.value
                     ? "border-[var(--color-ink)] font-medium text-[var(--color-ink)]"
                     : "border-transparent text-[var(--color-muted)] hover:text-[var(--color-ink)]"
                 )}
               >
-                {seg}
+                {seg.label} {selectedSegment === seg.value && `(${filtered.length})`}
               </button>
             ))}
           </div>
