@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { api } from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
 import { TopBar } from "@/components/layout/top-bar";
 import { Badge } from "@/components/ui/badge";
@@ -189,6 +191,7 @@ function DecisionTimeline({ steps }: { steps: TimelineStep[] }) {
 
 // ─── Main Page ───
 export default function AiWorkspacePage() {
+  const router = useRouter();
   const [phase, setPhase] = useState<WorkspacePhase>("idle");
   const [prompt, setPrompt] = useState("");
   const [currentStepIdx, setCurrentStepIdx] = useState(-1);
@@ -239,9 +242,59 @@ export default function AiWorkspacePage() {
     setTimeout(advance, aiSteps[0].duration);
   }, [prompt, phase]);
 
-  const handleLaunch = () => {
-    setShowLaunchModal(false);
-    setLaunched(true);
+  const handleLaunch = async () => {
+    if (!result) return;
+    try {
+      setShowLaunchModal(false);
+      setLaunched(true);
+
+      const campaignType = result.planner?.campaign_type || 
+        (result.timeline?.[4]?.value?.toLowerCase().includes("discount") ? "winback" : "retention");
+      
+      const channelName = typeof result.channel === "string" 
+        ? result.channel.toLowerCase() 
+        : (result.channel?.channel?.toLowerCase() || "email");
+        
+      const segmentName = typeof result.audienceLabel === "string"
+        ? result.audienceLabel
+        : (result.audience?.segment || "All");
+
+      const messageText = result.message || result.content?.message || "";
+
+      const openRate = result.forecast?.openRate !== undefined 
+        ? result.forecast.openRate 
+        : (result.forecast?.open_rate || 0);
+
+      const ctrVal = result.forecast?.ctr !== undefined 
+        ? result.forecast.ctr 
+        : (result.forecast?.ctr || 0);
+
+      const conversionVal = result.forecast?.conversions !== undefined 
+        ? ((result.forecast.conversions / result.audienceSize) * 100)
+        : (result.forecast?.conversion || 0);
+
+      const revenueVal = result.forecast?.revenue !== undefined 
+        ? result.forecast.revenue 
+        : (result.forecast?.revenue || 0);
+
+      const saved = await api.createCampaign({
+        name: `${campaignType.charAt(0).toUpperCase() + campaignType.slice(1)} Campaign - ${new Date().toLocaleDateString()}`,
+        goal: prompt,
+        channel: channelName,
+        segment: segmentName,
+        message: messageText,
+        campaign_type: campaignType,
+        predicted_open_rate: openRate,
+        predicted_ctr: ctrVal,
+        predicted_conversion: conversionVal,
+        predicted_revenue: revenueVal,
+      });
+
+      await api.launchCampaign(saved.id);
+      router.push("/campaigns");
+    } catch (e) {
+      console.error("Failed to launch campaign", e);
+    }
   };
 
   const handleReset = () => {
