@@ -109,7 +109,7 @@ export default function AnalyticsPage() {
   const totalDelivered = dashboardData?.total_delivered ?? 0;
   const totalOpened = dashboardData?.total_opened ?? 0;
   const totalClicked = dashboardData?.total_clicked ?? 0;
-  const totalConverted = dashboardData?.total_converted ?? 0;
+
 
   const funnelData = [
     {
@@ -205,7 +205,15 @@ export default function AnalyticsPage() {
                     <span className="font-mono text-xs text-[var(--color-signal)]">+{card.change}%</span>
                   </>
                 )}
-                {car        {/* Funnel (from campaign data) */}
+                {card.sublabel && (
+                  <span className="text-xs text-text-muted">{card.sublabel}</span>
+                )}
+              </div>
+            </motion.div>
+          ))}
+        </motion.div>
+
+        {/* Funnel (from campaign data) */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
