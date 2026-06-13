@@ -248,34 +248,35 @@ export default function AiWorkspacePage() {
       setShowLaunchModal(false);
       setLaunched(true);
 
-      const campaignType = result.planner?.campaign_type || 
-        (result.timeline?.[4]?.value?.toLowerCase().includes("discount") ? "winback" : "retention");
+      const res = result as any;
+      const campaignType = res.planner?.campaign_type || 
+        (res.timeline?.[4]?.value?.toLowerCase().includes("discount") ? "winback" : "retention");
       
-      const channelName = typeof result.channel === "string" 
-        ? result.channel.toLowerCase() 
-        : (result.channel?.channel?.toLowerCase() || "email");
+      const channelName = typeof res.channel === "string" 
+        ? res.channel.toLowerCase() 
+        : (res.channel?.channel?.toLowerCase() || "email");
         
-      const segmentName = typeof result.audienceLabel === "string"
-        ? result.audienceLabel
-        : (result.audience?.segment || "All");
+      const segmentName = typeof res.audienceLabel === "string"
+        ? res.audienceLabel
+        : (res.audience?.segment || "All");
 
-      const messageText = result.message || result.content?.message || "";
+      const messageText = res.message || res.content?.message || "";
 
-      const openRate = result.forecast?.openRate !== undefined 
-        ? result.forecast.openRate 
-        : (result.forecast?.open_rate || 0);
+      const openRate = res.forecast?.openRate !== undefined 
+        ? res.forecast.openRate 
+        : (res.forecast?.open_rate || 0);
 
-      const ctrVal = result.forecast?.ctr !== undefined 
-        ? result.forecast.ctr 
-        : (result.forecast?.ctr || 0);
+      const ctrVal = res.forecast?.ctr !== undefined 
+        ? res.forecast.ctr 
+        : (res.forecast?.ctr || 0);
 
-      const conversionVal = result.forecast?.conversions !== undefined 
-        ? ((result.forecast.conversions / result.audienceSize) * 100)
-        : (result.forecast?.conversion || 0);
+      const conversionVal = res.forecast?.conversions !== undefined 
+        ? ((res.forecast.conversions / res.audienceSize) * 100)
+        : (res.forecast?.conversion || 0);
 
-      const revenueVal = result.forecast?.revenue !== undefined 
-        ? result.forecast.revenue 
-        : (result.forecast?.revenue || 0);
+      const revenueVal = res.forecast?.revenue !== undefined 
+        ? res.forecast.revenue 
+        : (res.forecast?.revenue || 0);
 
       const saved = await api.createCampaign({
         name: `${campaignType.charAt(0).toUpperCase() + campaignType.slice(1)} Campaign - ${new Date().toLocaleDateString()}`,
