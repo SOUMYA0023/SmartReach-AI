@@ -18,11 +18,7 @@ logger = structlog.get_logger()
 
 
 def _run_async(coro):
-    loop = asyncio.new_event_loop()
-    try:
-        return loop.run_until_complete(coro)
-    finally:
-        loop.close()
+    return asyncio.run(coro)
 
 
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=60)

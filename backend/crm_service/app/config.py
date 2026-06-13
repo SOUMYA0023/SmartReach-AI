@@ -16,5 +16,15 @@ class Settings(BaseSettings):
     def allowed_origins_list(self) -> list[str]:
         return [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
 
+    @property
+    def validated_secret_key(self) -> str:
+        if self.SECRET_KEY == "change_this_to_a_long_random_string":
+            raise ValueError(
+                "SECRET_KEY must be changed from the default before deployment. "
+                "Run: python3 -c \"import secrets; print(secrets.token_hex(32))\" "
+                "and set the output as SECRET_KEY in your .env file."
+            )
+        return self.SECRET_KEY
+
 
 settings = Settings()

@@ -68,4 +68,10 @@ async def audience_node(state: CampaignState) -> dict[str, Any]:
             "decision_timeline": state.get("decision_timeline", []) + [timeline],
         }
     except Exception as e:
-        return {"errors": state.get("errors", []) + [f"audience: {str(e)}"]}
+        return {
+            "segment": state.get("segment") or "Loyal",
+            "audience_size": state.get("audience_size") or 100,
+            "audience_filters": state.get("audience_filters") or {"field": "segment", "operator": "eq", "value": "Loyal"},
+            "audience_confidence": 0.0,
+            "errors": state.get("errors", []) + [f"audience: {str(e)}"],
+        }

@@ -1,0 +1,72 @@
+services:
+  - type: web
+    name: smartreach-crm
+    runtime: docker
+    dockerfilePath: ./backend/crm_service/Dockerfile
+    dockerContext: ./backend/crm_service
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        value: postgresql+asyncpg://postgres.hytrtndptlrqqjxlfqyh:Soumya%400023@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres
+      - key: REDIS_URL
+        fromService:
+          name: smartreach-redis
+          type: redis
+          property: connectionString
+      - key: AI_SERVICE_URL
+        value: https://smartreach-ai-service.onrender.com
+      - key: CHANNEL_SERVICE_URL
+        value: https://smartreach-channel.onrender.com
+      - key: SECRET_KEY
+        value: d25d100f7560822934d7a9366d87a95b3f67de45e4f819110fe7e56622974707
+      - key: ALLOWED_ORIGINS
+        value: "*"
+
+  - type: web
+    name: smartreach-ai-service
+    runtime: docker
+    dockerfilePath: ./backend/ai_service/Dockerfile
+    dockerContext: ./backend/ai_service
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        value: postgresql+asyncpg://postgres.hytrtndptlrqqjxlfqyh:Soumya%400023@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: REDIS_URL
+        fromService:
+          name: smartreach-redis
+          type: redis
+          property: connectionString
+
+  - type: web
+    name: smartreach-channel
+    runtime: docker
+    dockerfilePath: ./backend/channel_service/Dockerfile
+    dockerContext: ./backend/channel_service
+    plan: free
+    envVars:
+      - key: REDIS_URL
+        fromService:
+          name: smartreach-redis
+          type: redis
+          property: connectionString
+      - key: CRM_WEBHOOK_URL
+        value: https://smartreach-crm.onrender.com/webhooks/communication-event
+
+  - type: web
+    name: smartreach-frontend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    envVars:
+      - key: NEXT_PUBLIC_CRM_URL
+        value: https://smartreach-crm.onrender.com
+      - key: NEXT_PUBLIC_AI_SERVICE_URL
+        value: https://smartreach-ai-service.onrender.com
+
+  - type: redis
+    name: smartreach-redis
+    plan: free
+    ipAllowList: []

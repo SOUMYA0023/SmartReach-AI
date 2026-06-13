@@ -3,17 +3,16 @@
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { TopBar } from "@/components/layout/top-bar";
-import { customers } from "@/data/customers";
-import { orders } from "@/data/customers";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn, formatCurrency, formatDate, formatRelativeDate } from "@/lib/utils";
-import { Search, X, Filter, ChevronDown, Mail, Phone, MapPin, ShoppingBag, Star, TrendingUp } from "lucide-react";
-import { Customer, CustomerSegment } from "@/types";
-import { fadeUpItem, staggerContainer } from "@/lib/motion";
+import { Search, X, Filter, Mail, Phone, MapPin, ShoppingBag, Star, TrendingUp } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import type { ApiCustomer } from "@/lib/api";
 
-const segmentColors: Record<CustomerSegment, string> = {
+const segmentColors: Record<string, string> = {
   Champions: "bg-[var(--color-signal-dim)] text-[var(--color-signal)]",
   Loyal: "bg-[#E7F5EF] text-success",
   "Potential Loyalist": "bg-surface-elevated text-text-primary border border-border-subtle",
@@ -23,9 +22,7 @@ const segmentColors: Record<CustomerSegment, string> = {
   Lost: "bg-danger/15 text-danger",
 };
 
-const segments: CustomerSegment[] = [
-  "Champions", "Loyal", "Potential Loyalist", "New Customers", "At Risk", "Dormant", "Lost",
-];
+const segments = ["Champions", "Loyal", "Potential Loyalist", "New Customers", "At Risk", "Dormant", "Lost"];
 
 function EngagementBar({ score }: { score: number }) {
   const color = score >= 70 ? "bg-success" : score >= 40 ? "bg-warning" : "bg-danger";
@@ -44,13 +41,17 @@ function EngagementBar({ score }: { score: number }) {
   );
 }
 
-function CustomerDetailDrawer({ customer, open, onClose }: { customer: Customer | null; open: boolean; onClose: () => void }) {
-  const customerOrders = useMemo(
-    () => (customer ? orders.filter((o) => o.customerId === customer.id) : []),
-    [customer]
-  );
-
+function CustomerDetailDrawer({
+  customer,
+  open,
+  onClose,
+}: {
+  customer: ApiCustomer | null;
+  open: boolean;
+  onClose: () => void;
+}) {
   if (!customer) return null;
+  const segment = customer.segment ?? "New Customers";
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
@@ -67,8 +68,8 @@ function CustomerDetailDrawer({ customer, open, onClose }: { customer: Customer 
             </div>
             <div>
               <h3 className="text-lg font-semibold text-text-primary">{customer.name}</h3>
-              <Badge className={cn("text-[10px] mt-1", segmentColors[customer.segment])}>
-                {customer.segment}
+              <Badge className={cn("text-[10px] mt-1", segmentColors[segment] ?? "")}>
+                {segment}
               </Badge>
             </div>
           </div>
@@ -79,23 +80,27 @@ function CustomerDetailDrawer({ customer, open, onClose }: { customer: Customer 
               <Mail className="w-4 h-4 text-text-muted" />
               <span className="text-text-primary">{customer.email}</span>
             </div>
-            <div className="flex items-center gap-3 text-sm">
-              <Phone className="w-4 h-4 text-text-muted" />
-              <span className="text-text-primary">{customer.phone}</span>
-            </div>
-            <div className="flex items-center gap-3 text-sm">
-              <MapPin className="w-4 h-4 text-text-muted" />
-              <span className="text-text-primary">{customer.city}</span>
-            </div>
+            {customer.phone && (
+              <div className="flex items-center gap-3 text-sm">
+                <Phone className="w-4 h-4 text-text-muted" />
+                <span className="text-text-primary">{customer.phone}</span>
+              </div>
+            )}
+            {customer.city && (
+              <div className="flex items-center gap-3 text-sm">
+                <MapPin className="w-4 h-4 text-text-muted" />
+                <span className="text-text-primary">{customer.city}</span>
+              </div>
+            )}
           </div>
 
           {/* Metrics Grid */}
           <div className="grid grid-cols-2 gap-3">
             {[
-              { label: "Lifetime Value", value: formatCurrency(customer.totalSpend), icon: Star },
-              { label: "Total Orders", value: customer.totalOrders.toString(), icon: ShoppingBag },
-              { label: "Engagement", value: `${customer.engagementScore}/100`, icon: TrendingUp },
-              { label: "RFM Score", value: customer.rfmLabel, icon: Filter },
+              { label: "Lifetime Value", value: formatCurrency(customer.total_spend), icon: Star },
+              { label: "Total Orders", value: customer.total_orders.toString(), icon: ShoppingBag },
+              { label: "Preferred Channel", value: customer.preferred_channel ?? "—", icon: TrendingUp },
+              { label: "Segment", value: segment, icon: Filter },
             ].map((metric) => (
               <div key={metric.label} className="p-3 rounded-[2px] bg-surface border border-border-subtle">
                 <div className="flex items-center gap-2 mb-1">
@@ -107,31 +112,14 @@ function CustomerDetailDrawer({ customer, open, onClose }: { customer: Customer 
             ))}
           </div>
 
-          {/* Preferred Channel */}
-          <div className="p-3 rounded-[2px] bg-[var(--color-signal-dim)] border border-border-subtle">
-            <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Preferred Channel</p>
-            <p className="text-sm font-semibold text-text-primary">{customer.preferredChannel}</p>
-          </div>
-
-          {/* Order History */}
-          <div>
-            <h4 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">Recent Orders</h4>
-            {customerOrders.length > 0 ? (
-              <div className="space-y-2">
-                {customerOrders.map((order) => (
-                  <div key={order.id} className="flex items-center justify-between p-3 rounded-[2px] bg-surface border border-border-subtle">
-                    <div>
-                      <p className="text-sm text-text-primary">{order.items.join(", ")}</p>
-                      <p className="text-xs text-text-muted">{formatDate(order.date)}</p>
-                    </div>
-                    <p className="text-sm font-semibold text-text-primary">{formatCurrency(order.amount)}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-text-muted text-center py-4">No order history available</p>
-            )}
-          </div>
+          {customer.last_order_date && (
+            <div className="p-3 rounded-[2px] bg-[var(--color-signal-dim)] border border-border-subtle">
+              <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Last Order</p>
+              <p className="text-sm font-semibold text-text-primary">
+                {formatDate(customer.last_order_date)}
+              </p>
+            </div>
+          )}
         </div>
       </SheetContent>
     </Sheet>
@@ -140,21 +128,42 @@ function CustomerDetailDrawer({ customer, open, onClose }: { customer: Customer 
 
 export default function CustomersPage() {
   const [search, setSearch] = useState("");
-  const [selectedSegment, setSelectedSegment] = useState<CustomerSegment | "All">("All");
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [selectedSegment, setSelectedSegment] = useState<string>("All");
+  const [selectedCustomer, setSelectedCustomer] = useState<ApiCustomer | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["customers"],
+    queryFn: () => api.getCustomers({ limit: 500 }),
+    refetchInterval: 60_000,
+  });
+
+  const customers = data?.items ?? [];
 
   const filtered = useMemo(() => {
     return customers.filter((c) => {
-      const matchesSearch = search === "" || c.name.toLowerCase().includes(search.toLowerCase()) || c.email.toLowerCase().includes(search.toLowerCase()) || c.city.toLowerCase().includes(search.toLowerCase());
+      const matchesSearch =
+        search === "" ||
+        c.name.toLowerCase().includes(search.toLowerCase()) ||
+        c.email.toLowerCase().includes(search.toLowerCase()) ||
+        (c.city ?? "").toLowerCase().includes(search.toLowerCase());
       const matchesSegment = selectedSegment === "All" || c.segment === selectedSegment;
       return matchesSearch && matchesSegment;
     });
-  }, [search, selectedSegment]);
+  }, [search, selectedSegment, customers]);
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <TopBar title="Customers" subtitle="Customer intelligence & segmentation" />
+      <TopBar
+        title="Customers"
+        subtitle={
+          isLoading
+            ? "Loading customers…"
+            : isError
+            ? "Could not reach backend"
+            : `${data?.total ?? 0} customers`
+        }
+      />
 
       <div className="flex-1 space-y-6 overflow-y-auto p-8">
         {/* Filters */}
@@ -210,58 +219,67 @@ export default function CustomersPage() {
           transition={{ delay: 0.15 }}
           className="overflow-hidden rounded-[2px] border border-[var(--color-border)] bg-white"
         >
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border-subtle">
-                  {["Customer", "City", "Total Spend", "Orders", "Last Order", "Segment", "Engagement", "Channel"].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-[10px] font-semibold text-text-muted uppercase tracking-wider whitespace-nowrap sticky top-0 bg-surface">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                <AnimatePresence mode="popLayout">
-                  {filtered.map((customer, index) => (
-                    <motion.tr
-                      key={customer.id}
-                      layout
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1, transition: { delay: index * 0.02 } }}
-                      exit={{ opacity: 0 }}
-                      onClick={() => { setSelectedCustomer(customer); setDrawerOpen(true); }}
-                      className="group cursor-pointer border-b border-[#F5F2EC] transition-colors duration-150 hover:bg-[var(--color-bg)]"
-                    >
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-[2px] bg-[#111110] flex items-center justify-center text-xs font-semibold text-white flex-shrink-0">
-                            {customer.name.split(" ").map((n) => n[0]).join("")}
+          {isLoading ? (
+            <div className="space-y-2 p-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="h-10 animate-pulse rounded-[2px] bg-[#F5F2EC]" />
+              ))}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border-subtle">
+                    {["Customer", "City", "Total Spend", "Orders", "Last Order", "Segment", "Channel"].map((h) => (
+                      <th key={h} className="px-4 py-3 text-left text-[10px] font-semibold text-text-muted uppercase tracking-wider whitespace-nowrap sticky top-0 bg-surface">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <AnimatePresence mode="popLayout">
+                    {filtered.map((customer, index) => (
+                      <motion.tr
+                        key={customer.id}
+                        layout
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1, transition: { delay: index * 0.02 } }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => { setSelectedCustomer(customer); setDrawerOpen(true); }}
+                        className="group cursor-pointer border-b border-[#F5F2EC] transition-colors duration-150 hover:bg-[var(--color-bg)]"
+                      >
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-[2px] bg-[#111110] flex items-center justify-center text-xs font-semibold text-white flex-shrink-0">
+                              {customer.name.split(" ").map((n) => n[0]).join("")}
+                            </div>
+                            <div>
+                              <p className="font-medium text-text-primary group-hover:text-text-primary transition-colors">{customer.name}</p>
+                              <p className="text-xs text-text-muted">{customer.email}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium text-text-primary group-hover:text-text-primary transition-colors">{customer.name}</p>
-                            <p className="text-xs text-text-muted">{customer.email}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-text-muted">{customer.city}</td>
-                      <td className="px-4 py-3 font-medium text-text-primary">{formatCurrency(customer.totalSpend)}</td>
-                      <td className="px-4 py-3 text-text-muted">{customer.totalOrders}</td>
-                      <td className="px-4 py-3 text-text-muted">{formatRelativeDate(customer.lastOrderDate)}</td>
-                      <td className="px-4 py-3">
-                        <Badge className={cn("text-[10px] font-medium border-0", segmentColors[customer.segment])}>{customer.segment}</Badge>
-                      </td>
-                      <td className="px-4 py-3">
-                        <EngagementBar score={customer.engagementScore} />
-                      </td>
-                      <td className="px-4 py-3 text-text-muted text-xs">{customer.preferredChannel}</td>
-                    </motion.tr>
-                  ))}
-                </AnimatePresence>
-              </tbody>
-            </table>
-          </div>
-          {filtered.length === 0 && (
+                        </td>
+                        <td className="px-4 py-3 text-text-muted">{customer.city ?? "—"}</td>
+                        <td className="px-4 py-3 font-medium text-text-primary">{formatCurrency(customer.total_spend)}</td>
+                        <td className="px-4 py-3 text-text-muted">{customer.total_orders}</td>
+                        <td className="px-4 py-3 text-text-muted">
+                          {customer.last_order_date ? formatRelativeDate(customer.last_order_date) : "—"}
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge className={cn("text-[10px] font-medium border-0", segmentColors[customer.segment ?? ""] ?? "")}>
+                            {customer.segment ?? "—"}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 text-text-muted text-xs">{customer.preferred_channel ?? "—"}</td>
+                      </motion.tr>
+                    ))}
+                  </AnimatePresence>
+                </tbody>
+              </table>
+            </div>
+          )}
+          {!isLoading && filtered.length === 0 && (
             <div className="text-center py-12">
               <p className="text-text-muted text-sm">No customers found matching your filters</p>
             </div>

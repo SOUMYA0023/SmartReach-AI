@@ -52,7 +52,7 @@ class ForecastService:
         campaign_type: str,
         audience_size: int,
     ) -> dict:
-        rates = self.CHANNEL_RATES.get(channel.lower(), self.CHANNEL_RATES["email"])
+        rates = self.CHANNEL_RATES.get((channel or "email").lower(), self.CHANNEL_RATES["email"])
         multiplier = self.SEGMENT_MULTIPLIERS.get(segment, 1.0)
         aov = self.AOV_BY_TYPE.get(campaign_type.lower(), 900)
 

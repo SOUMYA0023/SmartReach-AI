@@ -82,4 +82,10 @@ async def content_node(state: CampaignState) -> dict[str, Any]:
             "decision_timeline": state.get("decision_timeline", []) + [timeline],
         }
     except Exception as e:
-        return {"errors": state.get("errors", []) + [f"content: {str(e)}"]}
+        return {
+            "message": state.get("message") or state.get("goal", "Special offer just for you!"),
+            "subject": state.get("subject"),
+            "cta": state.get("cta") or "Shop Now",
+            "message_confidence": 0.0,
+            "errors": state.get("errors", []) + [f"content: {str(e)}"],
+        }

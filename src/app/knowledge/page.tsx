@@ -3,16 +3,17 @@
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { TopBar } from "@/components/layout/top-bar";
-import { knowledgeSnippets, playbooks } from "@/data/knowledge";
 import { Badge } from "@/components/ui/badge";
 import { cn, formatDate } from "@/lib/utils";
 import {
   BookOpen, Search, Sparkles, Brain, Target, Radio, Users,
-  ArrowRight, FileText, TrendingUp, Star, Clock, Zap,
+  ArrowRight, FileText, TrendingUp, Star, Zap,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import type { Playbook, KnowledgeSnippet } from "@/types";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import type { ApiKnowledgeDoc } from "@/lib/api";
 
 const categoryColors: Record<string, string> = {
   "Win-back": "bg-[var(--color-signal-dim)] text-[#7A5200]",
@@ -37,28 +38,40 @@ const categories = ["All", "Win-back", "Retention", "Acquisition", "Channel Stra
 export default function KnowledgePage() {
   const [activeCategory, setActiveCategory] = useState("All");
   const [search, setSearch] = useState("");
-  const [selectedPlaybook, setSelectedPlaybook] = useState<Playbook | null>(null);
-  const [showPlaybook, setShowPlaybook] = useState(false);
+  const [selectedDoc, setSelectedDoc] = useState<ApiKnowledgeDoc | null>(null);
+  const [showDoc, setShowDoc] = useState(false);
 
-  const filteredPlaybooks = useMemo(() => {
-    return playbooks.filter((p) => {
-      const matchesCategory = activeCategory === "All" || p.category === activeCategory;
-      const matchesSearch = search === "" || p.title.toLowerCase().includes(search.toLowerCase()) || p.description.toLowerCase().includes(search.toLowerCase());
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["knowledge"],
+    queryFn: () => api.getKnowledge({ limit: 200 }),
+    refetchInterval: 60_000,
+  });
+
+  const docs = data?.items ?? [];
+
+  const filtered = useMemo(() => {
+    return docs.filter((d) => {
+      const matchesCategory = activeCategory === "All" || d.category === activeCategory;
+      const matchesSearch =
+        search === "" ||
+        d.title.toLowerCase().includes(search.toLowerCase()) ||
+        d.content.toLowerCase().includes(search.toLowerCase());
       return matchesCategory && matchesSearch;
     });
-  }, [activeCategory, search]);
-
-  const filteredSnippets = useMemo(() => {
-    return knowledgeSnippets.filter((s) => {
-      const matchesCategory = activeCategory === "All" || s.category === activeCategory;
-      const matchesSearch = search === "" || s.title.toLowerCase().includes(search.toLowerCase()) || s.content.toLowerCase().includes(search.toLowerCase());
-      return matchesCategory && matchesSearch;
-    });
-  }, [activeCategory, search]);
+  }, [activeCategory, search, docs]);
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <TopBar title="Marketing Intelligence Hub" subtitle="AI knowledge base & marketing playbooks" />
+      <TopBar
+        title="Marketing Intelligence Hub"
+        subtitle={
+          isLoading
+            ? "Loading knowledge base…"
+            : isError
+            ? "Could not reach backend"
+            : `${data?.total ?? 0} knowledge documents`
+        }
+      />
 
       <div className="flex-1 space-y-6 overflow-y-auto p-8">
         {/* Header */}
@@ -79,15 +92,11 @@ export default function KnowledgePage() {
           <div className="flex items-center gap-6 text-xs text-text-muted mt-4">
             <div className="flex items-center gap-1.5">
               <FileText className="w-3.5 h-3.5" />
-              <span>{knowledgeSnippets.length} knowledge snippets</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <BookOpen className="w-3.5 h-3.5" />
-              <span>{playbooks.length} playbooks</span>
+              <span>{data?.total ?? "—"} knowledge documents</span>
             </div>
             <div className="flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-[var(--color-signal)]" />
-              <span>{knowledgeSnippets.filter((s) => s.usedByAi).length} used by AI</span>
+              <span>All used by AI for RAG retrieval</span>
             </div>
           </div>
         </motion.div>
@@ -126,118 +135,92 @@ export default function KnowledgePage() {
           </div>
         </motion.div>
 
-        {/* Playbooks */}
-        <div>
-          <h3 className="text-sm font-semibold text-text-primary mb-3 flex items-center gap-2">
-            <BookOpen className="w-4 h-4 text-[var(--color-signal)]" />
-            Playbooks
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <AnimatePresence mode="popLayout">
-              {filteredPlaybooks.map((playbook, index) => {
-                const Icon = categoryIcons[playbook.category] || FileText;
-                return (
-                  <motion.div
-                    key={playbook.id}
-                    layout
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0, transition: { delay: index * 0.05 } }}
-                    exit={{ opacity: 0, scale: 0.97 }}
-                    onClick={() => { setSelectedPlaybook(playbook); setShowPlaybook(true); }}
-                    className="group cursor-pointer rounded-[2px] border border-[var(--color-border)] bg-white p-5 transition-colors duration-150 hover:border-[#BFBCB4]"
-                  >
-                    <div className="flex items-start gap-3 mb-3">
-                      <div className="p-2 rounded-[2px] bg-surface-elevated group-hover:bg-surface-elevated transition-colors">
-                        <Icon className="w-4 h-4 text-text-muted group-hover:text-text-primary transition-colors" />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="text-sm font-semibold text-text-primary group-hover:text-text-primary transition-colors">{playbook.title}</h4>
-                        <Badge className={cn("text-[9px] mt-1", categoryColors[playbook.category])}>{playbook.category}</Badge>
-                      </div>
-                    </div>
-                    <p className="text-xs text-text-muted leading-relaxed mb-4 line-clamp-2">{playbook.description}</p>
-                    <div className="flex items-center justify-between text-[10px] text-text-muted">
-                      <div className="flex items-center gap-3">
-                        <span className="flex items-center gap-1"><FileText className="w-3 h-3" />{playbook.snippets.length} snippets</span>
-                        <span className="flex items-center gap-1"><Zap className="w-3 h-3" />{playbook.usageCount} uses</span>
-                      </div>
-                      <ArrowRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-text-primary" />
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
-          </div>
-        </div>
-
-        {/* Knowledge Snippets */}
+        {/* Knowledge Documents */}
         <div>
           <h3 className="text-sm font-semibold text-text-primary mb-3 flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-[var(--color-signal)]" />
-            Knowledge Snippets
+            Knowledge Documents ({filtered.length})
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <AnimatePresence mode="popLayout">
-              {filteredSnippets.map((snippet, index) => (
-                <motion.div
-                  key={snippet.id}
-                  layout
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0, transition: { delay: index * 0.03 } }}
-                  exit={{ opacity: 0, scale: 0.98 }}
-                  className="rounded-[2px] bg-surface border border-border-subtle p-4 hover:border-[#BFBCB4] transition-colors"
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <Badge className={cn("text-[9px]", categoryColors[snippet.category])}>{snippet.category}</Badge>
-                    {snippet.usedByAi && (
-                      <Badge className="bg-[var(--color-signal-dim)] text-[var(--color-signal)] text-[9px]">
-                        <Sparkles className="w-2.5 h-2.5 mr-0.5 inline" />Used by AI
-                      </Badge>
-                    )}
-                    <span className="text-[10px] text-text-muted ml-auto">{snippet.source}</span>
-                  </div>
-                  <h4 className="text-sm font-medium text-text-primary mb-1">{snippet.title}</h4>
-                  <p className="text-xs text-text-muted leading-relaxed line-clamp-3">{snippet.content}</p>
-                </motion.div>
+
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="h-32 animate-pulse rounded-[2px] border border-[var(--color-border)] bg-white" />
               ))}
-            </AnimatePresence>
-          </div>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-text-muted text-sm">
+                {docs.length === 0
+                  ? "No knowledge documents yet. Add documents via the AI Workspace or API."
+                  : "No documents match your filters"}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <AnimatePresence mode="popLayout">
+                {filtered.map((doc, index) => {
+                  const Icon = categoryIcons[doc.category] || FileText;
+                  return (
+                    <motion.div
+                      key={doc.id}
+                      layout
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0, transition: { delay: index * 0.03 } }}
+                      exit={{ opacity: 0, scale: 0.98 }}
+                      onClick={() => { setSelectedDoc(doc); setShowDoc(true); }}
+                      className="group cursor-pointer rounded-[2px] bg-surface border border-border-subtle p-5 hover:border-[#BFBCB4] transition-colors"
+                    >
+                      <div className="flex items-start gap-3 mb-3">
+                        <div className="p-2 rounded-[2px] bg-surface-elevated group-hover:bg-surface-elevated transition-colors">
+                          <Icon className="w-4 h-4 text-text-muted group-hover:text-text-primary transition-colors" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-semibold text-text-primary group-hover:text-text-primary transition-colors">{doc.title}</h4>
+                          <Badge className={cn("text-[9px] mt-1", categoryColors[doc.category] ?? "bg-[#F1EFE8] text-[var(--color-muted)]")}>
+                            {doc.category}
+                          </Badge>
+                        </div>
+                      </div>
+                      <p className="text-xs text-text-muted leading-relaxed mb-4 line-clamp-2">{doc.content}</p>
+                      <div className="flex items-center justify-between text-[10px] text-text-muted">
+                        <div className="flex items-center gap-1.5">
+                          <Sparkles className="w-3 h-3 text-[var(--color-signal)]" />
+                          <span>Used by AI · RAG indexed</span>
+                        </div>
+                        <ArrowRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-text-primary" />
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Playbook Detail Modal */}
-      <Dialog open={showPlaybook} onOpenChange={setShowPlaybook}>
+      {/* Document Detail Modal */}
+      <Dialog open={showDoc} onOpenChange={setShowDoc}>
         <DialogContent className="bg-surface border border-border-subtle max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-text-primary flex items-center gap-2">
               <BookOpen className="w-5 h-5 text-[var(--color-signal)]" />
-              {selectedPlaybook?.title}
+              {selectedDoc?.title}
             </DialogTitle>
-            <DialogDescription className="text-text-muted text-xs">{selectedPlaybook?.description}</DialogDescription>
+            <DialogDescription className="text-text-muted text-xs">
+              {selectedDoc?.category} · Added {selectedDoc?.created_at ? formatDate(selectedDoc.created_at) : "recently"}
+            </DialogDescription>
           </DialogHeader>
-          {selectedPlaybook && (
+          {selectedDoc && (
             <div className="space-y-4 mt-2">
-              <div className="flex items-center gap-4 text-xs text-text-muted">
-                <Badge className={cn("text-[10px]", categoryColors[selectedPlaybook.category])}>{selectedPlaybook.category}</Badge>
-                <span>{selectedPlaybook.snippets.length} snippets</span>
-                <span>{selectedPlaybook.usageCount} times used</span>
-                <span>Last used: {formatDate(selectedPlaybook.lastUsed)}</span>
+              <div className="p-4 rounded-[2px] bg-surface border border-border-subtle">
+                <p className="text-sm text-text-primary leading-relaxed">{selectedDoc.content}</p>
               </div>
-              <div className="space-y-3">
-                {selectedPlaybook.snippets.map((snippet) => (
-                  <div key={snippet.id} className="p-4 rounded-[2px] bg-surface border border-border-subtle">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h4 className="text-sm font-medium text-text-primary">{snippet.title}</h4>
-                      {snippet.usedByAi && (
-                        <Badge className="bg-[var(--color-signal-dim)] text-[var(--color-signal)] text-[9px]">
-                          <Sparkles className="w-2.5 h-2.5 mr-0.5 inline" />AI
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-xs text-text-muted leading-relaxed">{snippet.content}</p>
-                    <p className="text-[10px] text-text-muted/60 mt-2">Source: {snippet.source}</p>
-                  </div>
-                ))}
+              <div className="flex items-center gap-2">
+                <Badge className={cn("text-[10px]", categoryColors[selectedDoc.category] ?? "")}>
+                  {selectedDoc.category}
+                </Badge>
+                <span className="text-[10px] text-text-muted">RAG indexed · used by AI for campaign generation</span>
               </div>
             </div>
           )}

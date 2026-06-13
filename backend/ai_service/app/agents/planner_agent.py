@@ -56,4 +56,9 @@ async def planner_node(state: CampaignState) -> dict[str, Any]:
             "decision_timeline": state.get("decision_timeline", []) + [timeline],
         }
     except Exception as e:
-        return {"errors": state.get("errors", []) + [f"planner: {str(e)}"]}
+        return {
+            "campaign_type": state.get("campaign_type") or "retention",
+            "objective": state.get("objective") or state["goal"],
+            "planner_confidence": 0.0,
+            "errors": state.get("errors", []) + [f"planner: {str(e)}"],
+        }

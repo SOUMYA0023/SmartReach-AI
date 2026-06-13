@@ -3,6 +3,7 @@ import { DM_Mono, Inter, Syne } from "next/font/google";
 import "./globals.css";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryProvider } from "@/components/providers/query-provider";
 
 const inter = Inter({
   variable: "--font-body",
@@ -45,14 +46,16 @@ export default function RootLayout({
         />
       </head>
       <body className="h-screen overflow-hidden bg-[var(--color-bg)] text-[var(--color-ink)]">
-        <TooltipProvider>
-          <div className="flex h-screen">
-            <SidebarNav />
-            <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[var(--color-bg)]">
-              {children}
-            </main>
-          </div>
-        </TooltipProvider>
+        <QueryProvider>
+          <TooltipProvider>
+            <div className="flex h-screen">
+              <SidebarNav />
+              <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[var(--color-bg)]">
+                {children}
+              </main>
+            </div>
+          </TooltipProvider>
+        </QueryProvider>
       </body>
     </html>
   );

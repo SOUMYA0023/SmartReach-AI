@@ -3,7 +3,6 @@
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { TopBar } from "@/components/layout/top-bar";
-import { campaigns } from "@/data/campaigns";
 import { Badge } from "@/components/ui/badge";
 import { cn, formatCurrency, formatNumber, formatPercentage, formatDate } from "@/lib/utils";
 import {
@@ -13,39 +12,51 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import type { Campaign, CampaignStatus } from "@/types";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import type { ApiCampaign } from "@/lib/api";
 
 const channelIcons: Record<string, React.ElementType> = {
+  email: Mail,
+  whatsapp: MessageSquare,
+  sms: Phone,
+  rcs: Bell,
   Email: Mail,
   WhatsApp: MessageSquare,
   SMS: Phone,
   Push: Bell,
 };
 
-const statusConfig: Record<CampaignStatus, { color: string; icon: React.ElementType }> = {
-  Draft: { color: "bg-[#F1EFE8] text-[var(--color-muted)]", icon: Clock },
-  Scheduled: { color: "bg-[#F1EFE8] text-[var(--color-muted)]", icon: Calendar },
-  Running: { color: "bg-[#EAF3DE] text-[#3B6D11]", icon: Loader2 },
-  Delivered: { color: "bg-[#EAF3DE] text-[#3B6D11]", icon: CheckCircle2 },
-  Failed: { color: "bg-[#FFECEC] text-[var(--color-negative)]", icon: XCircle },
-  Completed: { color: "bg-[var(--color-signal-dim)] text-[#7A5200]", icon: CheckCircle2 },
+const statusConfig: Record<string, { color: string; icon: React.ElementType }> = {
+  DRAFT: { color: "bg-[#F1EFE8] text-[var(--color-muted)]", icon: Clock },
+  SCHEDULED: { color: "bg-[#F1EFE8] text-[var(--color-muted)]", icon: Calendar },
+  LAUNCHING: { color: "bg-[#EAF3DE] text-[#3B6D11]", icon: Loader2 },
+  ACTIVE: { color: "bg-[#EAF3DE] text-[#3B6D11]", icon: CheckCircle2 },
+  DELIVERED: { color: "bg-[#EAF3DE] text-[#3B6D11]", icon: CheckCircle2 },
+  FAILED: { color: "bg-[#FFECEC] text-[var(--color-negative)]", icon: XCircle },
+  COMPLETED: { color: "bg-[var(--color-signal-dim)] text-[#7A5200]", icon: CheckCircle2 },
 };
 
-const statusTabs: (CampaignStatus | "All")[] = [
-  "All", "Draft", "Scheduled", "Running", "Delivered", "Completed", "Failed",
-];
+const statusTabs = ["All", "DRAFT", "ACTIVE", "DELIVERED", "COMPLETED", "FAILED"] as const;
 
-function CampaignDetail({ campaign, open, onClose }: { campaign: Campaign | null; open: boolean; onClose: () => void }) {
+function CampaignDetail({
+  campaign,
+  open,
+  onClose,
+}: {
+  campaign: ApiCampaign | null;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const { data: analytics } = useQuery({
+    queryKey: ["campaign-analytics", campaign?.id],
+    queryFn: () => api.getCampaignAnalytics(campaign!.id),
+    enabled: !!campaign?.id && open,
+  });
+
   if (!campaign) return null;
-  const StatusIcon = statusConfig[campaign.status].icon;
-
-  const timelineEvents = [
-    { label: "Created", date: campaign.createdAt, done: true },
-    ...(campaign.scheduledAt ? [{ label: "Scheduled", date: campaign.scheduledAt.split("T")[0], done: true }] : []),
-    { label: "Sent", date: campaign.sentCount > 0 ? campaign.createdAt : "", done: campaign.sentCount > 0 },
-    { label: "Delivered", date: campaign.deliveredCount > 0 ? campaign.createdAt : "", done: campaign.deliveredCount > 0 },
-    { label: "Completed", date: campaign.status === "Completed" ? campaign.createdAt : "", done: campaign.status === "Completed" },
-  ];
+  const statusKey = campaign.status?.toUpperCase() ?? "DRAFT";
+  const StatusIcon = statusConfig[statusKey]?.icon ?? Clock;
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
@@ -57,7 +68,7 @@ function CampaignDetail({ campaign, open, onClose }: { campaign: Campaign | null
         <div className="p-6 space-y-6">
           {/* Status + Channel */}
           <div className="flex items-center gap-3">
-            <Badge className={cn("text-xs px-2.5 py-1 border-0", statusConfig[campaign.status].color)}>
+            <Badge className={cn("text-xs px-2.5 py-1 border-0", statusConfig[statusKey]?.color)}>
               <StatusIcon className="w-3 h-3 mr-1 inline" />
               {campaign.status}
             </Badge>
@@ -66,25 +77,25 @@ function CampaignDetail({ campaign, open, onClose }: { campaign: Campaign | null
             </Badge>
           </div>
 
-          {/* Target Audience */}
+          {/* Goal */}
           <div className="p-3 rounded-[2px] bg-surface border border-border-subtle">
             <div className="flex items-center gap-2 mb-1">
               <Users className="w-3.5 h-3.5 text-text-muted" />
-              <span className="text-[10px] text-text-muted uppercase tracking-wider">Target Audience</span>
+              <span className="text-[10px] text-text-muted uppercase tracking-wider">Campaign Goal</span>
             </div>
-            <p className="text-sm text-text-primary">{campaign.targetAudience}</p>
+            <p className="text-sm text-text-primary">{campaign.goal}</p>
           </div>
 
-          {/* Metrics Grid */}
-          {campaign.sentCount > 0 && (
+          {/* Live Analytics */}
+          {analytics && analytics.sent > 0 && (
             <div className="grid grid-cols-2 gap-3">
               {[
-                { label: "Sent", value: formatNumber(campaign.sentCount), icon: Rocket },
-                { label: "Delivered", value: formatNumber(campaign.deliveredCount), icon: CheckCircle2 },
-                { label: "Open Rate", value: formatPercentage(campaign.openRate), icon: Eye },
-                { label: "CTR", value: formatPercentage(campaign.ctr), icon: MousePointerClick },
-                { label: "Conversion Rate", value: formatPercentage(campaign.conversionRate), icon: TrendingUp },
-                { label: "Revenue", value: formatCurrency(campaign.revenue), icon: BarChart3 },
+                { label: "Sent", value: formatNumber(analytics.sent), icon: Rocket },
+                { label: "Delivered", value: formatNumber(analytics.delivered), icon: CheckCircle2 },
+                { label: "Open Rate", value: formatPercentage(analytics.open_rate), icon: Eye },
+                { label: "CTR", value: formatPercentage(analytics.ctr), icon: MousePointerClick },
+                { label: "Conversion Rate", value: formatPercentage(analytics.conversion_rate), icon: TrendingUp },
+                { label: "Converted", value: formatNumber(analytics.converted), icon: BarChart3 },
               ].map((m) => (
                 <div key={m.label} className="p-3 rounded-[2px] bg-surface border border-border-subtle">
                   <div className="flex items-center gap-1.5 mb-1">
@@ -97,62 +108,39 @@ function CampaignDetail({ campaign, open, onClose }: { campaign: Campaign | null
             </div>
           )}
 
-          {/* Funnel */}
-          {campaign.sentCount > 0 && (
-            <div className="space-y-2">
-              <h4 className="text-xs font-semibold text-text-muted uppercase tracking-wider">Campaign Funnel</h4>
+          {/* Predicted metrics when no live data */}
+          {(!analytics || analytics.sent === 0) && campaign.predicted_open_rate != null && (
+            <div className="grid grid-cols-2 gap-3">
               {[
-                { label: "Sent", value: campaign.sentCount, pct: 100, color: "#111110" },
-                { label: "Delivered", value: campaign.deliveredCount, pct: (campaign.deliveredCount / campaign.sentCount) * 100, color: "#3A3A38" },
-                { label: "Opened", value: Math.round(campaign.deliveredCount * campaign.openRate / 100), pct: campaign.openRate, color: "#888780" },
-                { label: "Clicked", value: Math.round(campaign.deliveredCount * campaign.ctr / 100), pct: campaign.ctr, color: "#B4B2A9" },
-                { label: "Converted", value: Math.round(campaign.deliveredCount * campaign.conversionRate / 100), pct: campaign.conversionRate, color: "#F5A623" },
-              ].map((step) => (
-                <div key={step.label} className="space-y-1">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-text-muted">{step.label}</span>
-                    <span className="text-text-primary font-medium">{formatNumber(step.value)}</span>
+                { label: "Predicted Open Rate", value: formatPercentage(campaign.predicted_open_rate ?? 0), icon: Eye },
+                { label: "Predicted CTR", value: formatPercentage(campaign.predicted_ctr ?? 0), icon: MousePointerClick },
+                { label: "Predicted Conv.", value: formatPercentage(campaign.predicted_conversion ?? 0), icon: TrendingUp },
+                { label: "Est. Revenue", value: formatCurrency(campaign.predicted_revenue ?? 0), icon: BarChart3 },
+              ].map((m) => (
+                <div key={m.label} className="p-3 rounded-[2px] bg-surface border border-border-subtle">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <m.icon className="w-3 h-3 text-text-muted" />
+                    <span className="text-[10px] text-text-muted uppercase tracking-wider">{m.label}</span>
                   </div>
-                  <div className="h-[3px] overflow-hidden bg-[#F0EDE8]">
-                    <motion.div
-                      className="h-full"
-                      style={{ background: step.color }}
-                      initial={{ width: 0 }}
-                      animate={{ width: `${step.pct}%` }}
-                      transition={{ duration: 0.6, ease: "easeOut" }}
-                    />
-                  </div>
+                  <p className="text-sm font-semibold text-text-primary">{m.value}</p>
                 </div>
               ))}
             </div>
           )}
 
           {/* Message Preview */}
-          <div>
-            <h4 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Message</h4>
-            <div className="p-4 rounded-[2px] bg-surface-elevated border border-border-subtle">
-              <p className="text-sm text-text-primary leading-relaxed">{campaign.message}</p>
+          {campaign.message && (
+            <div>
+              <h4 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Message</h4>
+              <div className="p-4 rounded-[2px] bg-surface-elevated border border-border-subtle">
+                <p className="text-sm text-text-primary leading-relaxed">{campaign.message}</p>
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Timeline */}
-          <div>
-            <h4 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">Timeline</h4>
-            <div className="relative pl-6 space-y-3">
-              <div className="absolute left-[9px] top-1 bottom-1 w-px bg-border-subtle" />
-              {timelineEvents.map((event, i) => (
-                <div key={i} className="relative flex items-center gap-3">
-                  <div className={cn("absolute -left-6 w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center", event.done ? "bg-surface-elevated border-success" : "bg-surface border-border-subtle")}>
-                    {event.done && <CheckCircle2 className="w-2.5 h-2.5 text-success" />}
-                  </div>
-                  <div className="ml-2">
-                    <p className={cn("text-xs font-medium", event.done ? "text-text-primary" : "text-text-muted/50")}>{event.label}</p>
-                    {event.date && <p className="text-[10px] text-text-muted">{formatDate(event.date)}</p>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <p className="text-[10px] text-text-muted">
+            Created {formatDate(campaign.created_at)}
+          </p>
         </div>
       </SheetContent>
     </Sheet>
@@ -160,32 +148,60 @@ function CampaignDetail({ campaign, open, onClose }: { campaign: Campaign | null
 }
 
 export default function CampaignsPage() {
-  const [activeTab, setActiveTab] = useState<CampaignStatus | "All">("All");
+  const [activeTab, setActiveTab] = useState<(typeof statusTabs)[number]>("All");
   const [search, setSearch] = useState("");
-  const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
+  const [selectedCampaign, setSelectedCampaign] = useState<ApiCampaign | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["campaigns"],
+    queryFn: () => api.getCampaigns({ limit: 200 }),
+    refetchInterval: 30_000,
+  });
+
+  const allCampaigns = data?.items ?? [];
+
   const filtered = useMemo(() => {
-    return campaigns
+    return allCampaigns
       .filter((c) => {
-        const matchesTab = activeTab === "All" || c.status === activeTab;
-        const matchesSearch = search === "" || c.name.toLowerCase().includes(search.toLowerCase());
+        const statusKey = c.status?.toUpperCase() ?? "DRAFT";
+        const matchesTab = activeTab === "All" || statusKey === activeTab;
+        const matchesSearch =
+          search === "" ||
+          c.name.toLowerCase().includes(search.toLowerCase()) ||
+          c.goal?.toLowerCase().includes(search.toLowerCase());
         return matchesTab && matchesSearch;
       })
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [activeTab, search]);
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [activeTab, search, allCampaigns]);
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <TopBar title="Campaigns" subtitle="Campaign lifecycle management" />
+      <TopBar
+        title="Campaigns"
+        subtitle={
+          isLoading
+            ? "Loading campaigns…"
+            : isError
+            ? "Could not reach backend"
+            : `${data?.total ?? 0} campaigns total`
+        }
+      />
 
       <div className="flex-1 space-y-6 overflow-y-auto p-8">
         {/* Filters */}
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-          {/* Status Tabs */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          className="flex flex-col items-start gap-4 sm:flex-row sm:items-center"
+        >
           <div className="flex overflow-x-auto border-b border-[var(--color-border)]">
             {statusTabs.map((tab) => {
-              const count = tab === "All" ? campaigns.length : campaigns.filter((c) => c.status === tab).length;
+              const count =
+                tab === "All"
+                  ? allCampaigns.length
+                  : allCampaigns.filter((c) => c.status?.toUpperCase() === tab).length;
               return (
                 <button
                   key={tab}
@@ -203,7 +219,6 @@ export default function CampaignsPage() {
             })}
           </div>
 
-          {/* Search */}
           <div className="relative w-full sm:w-64 ml-auto">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
             <Input
@@ -222,81 +237,87 @@ export default function CampaignsPage() {
           transition={{ delay: 0.1 }}
           className="grid gap-3"
         >
-          <AnimatePresence mode="popLayout">
-            {filtered.map((campaign, index) => {
-              const ChannelIcon = channelIcons[campaign.channel] || Mail;
-              const config = statusConfig[campaign.status];
-              const StatusIcon = config.icon;
+          {isLoading ? (
+            Array.from({ length: 5 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-16 animate-pulse rounded-[2px] border border-[var(--color-border)] bg-white"
+              />
+            ))
+          ) : (
+            <AnimatePresence mode="popLayout">
+              {filtered.map((campaign, index) => {
+                const channelKey = campaign.channel?.toLowerCase() ?? "email";
+                const ChannelIcon = channelIcons[campaign.channel] || channelIcons[channelKey] || Mail;
+                const statusKey = campaign.status?.toUpperCase() ?? "DRAFT";
+                const config = statusConfig[statusKey] ?? statusConfig.DRAFT;
+                const StatusIcon = config.icon;
 
-              return (
-                <motion.div
-                  key={campaign.id}
-                  layout
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0, transition: { delay: index * 0.03 } }}
-                  exit={{ opacity: 0, scale: 0.98 }}
-                  onClick={() => { setSelectedCampaign(campaign); setDetailOpen(true); }}
-                  className="group mb-2 flex cursor-pointer items-center gap-4 rounded-[2px] border border-[var(--color-border)] bg-white px-5 py-4 transition-colors duration-150 hover:border-[#BFBCB4]"
-                >
-                  {/* Channel Icon */}
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[2px] border border-[var(--color-border)]">
-                    <ChannelIcon className="h-4 w-4 text-[var(--color-muted)]" />
-                  </div>
-
-                  {/* Info */}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-body text-sm font-medium text-[var(--color-ink)]">
-                      {campaign.name}
-                    </p>
-                    <p className="mt-0.5 truncate font-body text-[11px] text-[var(--color-muted)]">
-                      {campaign.targetAudience}
-                    </p>
-                  </div>
-
-                  {/* Status */}
-                  <Badge className={cn("shrink-0 rounded-[2px] border-0 px-2 py-0.5 font-mono text-[9px] uppercase", config.color)}>
-                    <StatusIcon className={cn("w-3 h-3 mr-1 inline", campaign.status === "Running" && "animate-spin")} />
-                    {campaign.status}
-                  </Badge>
-
-                  {/* Metrics (desktop only) */}
-                  {campaign.sentCount > 0 && (
-                    <div className="hidden lg:flex items-center gap-4 text-xs text-text-muted">
-                      <div className="text-center">
-                        <p className="font-semibold text-text-primary">{formatNumber(campaign.sentCount)}</p>
-                        <p>Sent</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="font-semibold text-text-primary">{campaign.openRate}%</p>
-                        <p>Open</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="font-semibold text-text-primary">{campaign.ctr}%</p>
-                        <p>CTR</p>
-                      </div>
-                      {campaign.revenue > 0 && (
-                        <div className="text-center">
-                          <p className="font-semibold text-success">{formatCurrency(campaign.revenue)}</p>
-                          <p>Revenue</p>
-                        </div>
-                      )}
+                return (
+                  <motion.div
+                    key={campaign.id}
+                    layout
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0, transition: { delay: index * 0.03 } }}
+                    exit={{ opacity: 0, scale: 0.98 }}
+                    onClick={() => { setSelectedCampaign(campaign); setDetailOpen(true); }}
+                    className="group mb-2 flex cursor-pointer items-center gap-4 rounded-[2px] border border-[var(--color-border)] bg-white px-5 py-4 transition-colors duration-150 hover:border-[#BFBCB4]"
+                  >
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[2px] border border-[var(--color-border)]">
+                      <ChannelIcon className="h-4 w-4 text-[var(--color-muted)]" />
                     </div>
-                  )}
 
-                  {/* Date */}
-                  <span className="hidden shrink-0 font-mono text-[11px] text-[var(--color-muted)] sm:block">
-                    {formatDate(campaign.createdAt)}
-                  </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-body text-sm font-medium text-[var(--color-ink)]">
+                        {campaign.name}
+                      </p>
+                      <p className="mt-0.5 truncate font-body text-[11px] text-[var(--color-muted)]">
+                        {campaign.goal}
+                      </p>
+                    </div>
 
-                  <ChevronRight className="h-4 w-4 shrink-0 text-[#B4B2A9] transition-colors" />
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
+                    <Badge className={cn("shrink-0 rounded-[2px] border-0 px-2 py-0.5 font-mono text-[9px] uppercase", config.color)}>
+                      <StatusIcon className={cn("w-3 h-3 mr-1 inline", statusKey === "LAUNCHING" && "animate-spin")} />
+                      {campaign.status}
+                    </Badge>
 
-          {filtered.length === 0 && (
+                    {campaign.predicted_open_rate != null && (
+                      <div className="hidden lg:flex items-center gap-4 text-xs text-text-muted">
+                        <div className="text-center">
+                          <p className="font-semibold text-text-primary">{campaign.predicted_open_rate.toFixed(1)}%</p>
+                          <p>Open</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="font-semibold text-text-primary">{(campaign.predicted_ctr ?? 0).toFixed(1)}%</p>
+                          <p>CTR</p>
+                        </div>
+                        {(campaign.predicted_revenue ?? 0) > 0 && (
+                          <div className="text-center">
+                            <p className="font-semibold text-success">{formatCurrency(campaign.predicted_revenue ?? 0)}</p>
+                            <p>Revenue</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <span className="hidden shrink-0 font-mono text-[11px] text-[var(--color-muted)] sm:block">
+                      {formatDate(campaign.created_at)}
+                    </span>
+
+                    <ChevronRight className="h-4 w-4 shrink-0 text-[#B4B2A9] transition-colors" />
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          )}
+
+          {!isLoading && filtered.length === 0 && (
             <div className="text-center py-16">
-              <p className="text-text-muted text-sm">No campaigns found</p>
+              <p className="text-text-muted text-sm">
+                {allCampaigns.length === 0
+                  ? "No campaigns yet — generate your first campaign in the AI Workspace"
+                  : "No campaigns match your filters"}
+              </p>
             </div>
           )}
         </motion.div>

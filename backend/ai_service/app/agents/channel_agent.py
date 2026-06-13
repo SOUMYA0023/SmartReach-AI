@@ -64,4 +64,8 @@ async def channel_node(state: CampaignState) -> dict[str, Any]:
             "decision_timeline": state.get("decision_timeline", []) + [timeline],
         }
     except Exception as e:
-        return {"errors": state.get("errors", []) + [f"channel: {str(e)}"]}
+        return {
+            "channel": state.get("channel") or "email",
+            "channel_confidence": 0.0,
+            "errors": state.get("errors", []) + [f"channel: {str(e)}"],
+        }

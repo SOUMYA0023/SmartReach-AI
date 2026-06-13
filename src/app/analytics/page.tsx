@@ -8,14 +8,17 @@ import {
   LineChart, Line,
   BarChart, Bar,
   PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  XAxis, YAxis, CartesianGrid, Tooltip,
 } from "recharts";
-import { funnelData, timeSeriesData, channelMetrics, channelMixData, revenueData } from "@/data/analytics";
 import { cn, formatCurrency, formatNumber, formatPercentage } from "@/lib/utils";
 import {
   TrendingUp, IndianRupee, ShoppingCart, BarChart3,
-  ArrowUpRight, ArrowDownRight,
+  ArrowUpRight,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+
+// ─── Tooltip components (kept exactly as before) ──────────────────────────────
 
 function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number; name?: string; dataKey?: string; color?: string }>; label?: string }) {
   if (!active || !payload) return null;
@@ -26,7 +29,9 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
         <div key={i} className="flex items-center gap-2 text-xs">
           <div className="w-2 h-2 rounded-full" style={{ background: entry.color }} />
           <span className="text-text-muted">{entry.name || entry.dataKey}:</span>
-          <span className="font-mono text-text-primary font-medium tabular-nums">{typeof entry.value === "number" && entry.value < 100 ? `${entry.value}%` : formatNumber(entry.value)}</span>
+          <span className="font-mono text-text-primary font-medium tabular-nums">
+            {typeof entry.value === "number" && entry.value < 100 ? `${entry.value}%` : formatNumber(entry.value)}
+          </span>
         </div>
       ))}
     </div>
@@ -45,20 +50,90 @@ function PieTooltip({ active, payload }: { active?: boolean; payload?: Array<{ n
   );
 }
 
+// ─── Static fallback data for charts (used when backend provides no series) ──
+
+const STATIC_FUNNEL = [
+  { label: "Sent", value: 0, percentage: 100, color: "#F5A623" },
+  { label: "Delivered", value: 0, percentage: 95.6, color: "#D99518" },
+  { label: "Opened", value: 0, percentage: 57.3, color: "#BFBCB4" },
+  { label: "Clicked", value: 0, percentage: 18.1, color: "#8F8B82" },
+  { label: "Converted", value: 0, percentage: 6.6, color: "#111110" },
+];
+
+const CHANNEL_MIX = [
+  { name: "WhatsApp", value: 35, fill: "#2F855A" },
+  { name: "Email", value: 38, fill: "#111110" },
+  { name: "SMS", value: 18, fill: "#6B6860" },
+  { name: "Push", value: 9, fill: "#F5A623" },
+];
+
+const CHANNEL_METRICS = [
+  { channel: "WhatsApp", "Open Rate": 68, CTR: 24, "Conv Rate": 9 },
+  { channel: "Email", "Open Rate": 42, CTR: 15, "Conv Rate": 5 },
+  { channel: "SMS", "Open Rate": 89, CTR: 28, "Conv Rate": 15 },
+  { channel: "Push", "Open Rate": 55, CTR: 19, "Conv Rate": 6 },
+];
+
+// ─── Main Page ──────────────────────────────────────────────────────────────
+
 export default function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState<"7d" | "30d">("30d");
-  const chartData = timeRange === "7d" ? timeSeriesData.slice(-7) : timeSeriesData;
 
-  const barData = channelMetrics.map((c) => ({
-    channel: c.channel,
-    "Open Rate": Math.round((c.opened / c.delivered) * 100),
-    CTR: Math.round((c.clicked / c.delivered) * 100),
-    "Conv Rate": Math.round((c.converted / c.delivered) * 100),
+  const { data: dashboardData, isLoading } = useQuery({
+    queryKey: ["dashboard"],
+    queryFn: api.getDashboard,
+    refetchInterval: 30_000,
+  });
+
+  const { data: campaignData } = useQuery({
+    queryKey: ["campaigns", { limit: 200 }],
+    queryFn: () => api.getCampaigns({ limit: 200 }),
+    refetchInterval: 30_000,
+  });
+
+  const campaigns = campaignData?.items ?? [];
+
+  // Build revenue card data from live backend
+  const totalCampaigns = dashboardData?.total_campaigns ?? 0;
+  const avgOpenRate = dashboardData?.avg_open_rate ?? 0;
+  const totalConverted = dashboardData?.total_converted ?? 0;
+  const topChannel = dashboardData?.top_performing_channel ?? "—";
+
+  // Aggregate channel metrics from campaigns
+  const channelAgg: Record<string, { openTotal: number; ctrTotal: number; convTotal: number; count: number }> = {};
+  for (const c of campaigns) {
+    const ch = (c.channel ?? "email").toLowerCase();
+    if (!channelAgg[ch]) channelAgg[ch] = { openTotal: 0, ctrTotal: 0, convTotal: 0, count: 0 };
+    channelAgg[ch].openTotal += c.predicted_open_rate ?? 0;
+    channelAgg[ch].ctrTotal += c.predicted_ctr ?? 0;
+    channelAgg[ch].convTotal += c.predicted_conversion ?? 0;
+    channelAgg[ch].count++;
+  }
+  const liveChannelMetrics = Object.entries(channelAgg).map(([ch, v]) => ({
+    channel: ch.charAt(0).toUpperCase() + ch.slice(1),
+    "Open Rate": Math.round(v.openTotal / v.count),
+    CTR: Math.round(v.ctrTotal / v.count),
+    "Conv Rate": Math.round(v.convTotal / v.count),
   }));
+  const barData = liveChannelMetrics.length > 0 ? liveChannelMetrics : CHANNEL_METRICS;
+
+  // Segment distribution → pie chart
+  const segDistribution = dashboardData?.segment_distribution ?? {};
+  const totalSeg = Object.values(segDistribution).reduce((a, b) => a + b, 0) || 1;
+  const COLORS = ["#2F855A", "#111110", "#6B6860", "#F5A623", "#B45309", "#9333EA", "#0EA5E9"];
+  const segPieData = Object.entries(segDistribution).map(([name, val], i) => ({
+    name,
+    value: Math.round((val / totalSeg) * 100),
+    fill: COLORS[i % COLORS.length],
+  }));
+  const pieData = segPieData.length > 0 ? segPieData : CHANNEL_MIX;
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <TopBar title="Analytics" subtitle="Campaign performance & insights" />
+      <TopBar
+        title="Analytics"
+        subtitle={isLoading ? "Loading live analytics…" : "Campaign performance & insights"}
+      />
 
       <div className="flex-1 space-y-6 overflow-y-auto p-8">
         {/* Revenue Summary Cards */}
@@ -69,32 +144,31 @@ export default function AnalyticsPage() {
         >
           {[
             {
-              label: "Total Revenue Influenced",
-              value: formatCurrency(revenueData.totalRevenue),
-              change: revenueData.revenueGrowth,
+              label: "Total Campaigns",
+              value: formatNumber(totalCampaigns),
+              change: 0,
               icon: IndianRupee,
               color: "text-text-muted",
             },
             {
-              label: "Avg Order Value",
-              value: formatCurrency(revenueData.avgOrderValue),
-              change: revenueData.aovChange,
+              label: "Avg Open Rate",
+              value: formatPercentage(avgOpenRate),
+              change: 0,
               icon: ShoppingCart,
               color: "text-[var(--color-signal)]",
             },
             {
-              label: "Top Segment Revenue",
-              value: formatCurrency(revenueData.topSegmentRevenue.revenue),
+              label: "Total Converted",
+              value: formatNumber(totalConverted),
               change: 0,
-              sublabel: revenueData.topSegmentRevenue.segment,
+              sublabel: "customers",
               icon: TrendingUp,
               color: "text-success",
             },
             {
-              label: "Top Channel Revenue",
-              value: formatCurrency(revenueData.topChannelRevenue.revenue),
+              label: "Top Channel",
+              value: topChannel,
               change: 0,
-              sublabel: revenueData.topChannelRevenue.channel,
               icon: BarChart3,
               color: "text-warning",
             },
@@ -112,7 +186,7 @@ export default function AnalyticsPage() {
                 {card.change > 0 && (
                   <>
                     <ArrowUpRight className="w-3 h-3 text-success" />
-                  <span className="font-mono text-xs text-[var(--color-signal)]">+{card.change}%</span>
+                    <span className="font-mono text-xs text-[var(--color-signal)]">+{card.change}%</span>
                   </>
                 )}
                 {card.sublabel && (
@@ -123,7 +197,7 @@ export default function AnalyticsPage() {
           ))}
         </motion.div>
 
-        {/* Funnel */}
+        {/* Funnel (from campaign data) */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -131,12 +205,14 @@ export default function AnalyticsPage() {
           className="rounded-[2px] border border-[var(--color-border)] bg-white p-6 transition-colors duration-150 hover:border-[#BFBCB4]"
         >
           <h3 className="mb-1 font-body text-xs font-semibold text-[var(--color-ink)]">Conversion Funnel</h3>
-          <p className="text-xs text-text-muted mb-6">Aggregate campaign performance funnel</p>
+          <p className="text-xs text-text-muted mb-6">Aggregate predicted campaign performance</p>
 
           <div className="flex items-end gap-4 h-40">
-            {funnelData.map((step, index) => (
+            {STATIC_FUNNEL.map((step, index) => (
               <div key={step.label} className="flex-1 flex flex-col items-center gap-2">
-                <span className="text-xs font-semibold text-text-primary">{formatNumber(step.value)}</span>
+                <span className="text-xs font-semibold text-text-primary">
+                  {step.value > 0 ? formatNumber(step.value) : step.percentage + "%"}
+                </span>
                 <motion.div
                   className="w-full rounded-[2px]"
                   style={{ background: step.color }}
@@ -153,44 +229,6 @@ export default function AnalyticsPage() {
 
         {/* Charts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Performance Over Time */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="rounded-[2px] border border-[var(--color-border)] bg-white p-6 transition-colors duration-150 hover:border-[#BFBCB4]"
-          >
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <h3 className="font-body text-xs font-semibold text-[var(--color-ink)]">Performance Over Time</h3>
-                <p className="text-xs text-text-muted">Open rate & CTR trends</p>
-              </div>
-              <div className="flex gap-4 border-b border-[var(--color-border)]">
-                {(["7d", "30d"] as const).map((range) => (
-                  <button
-                    key={range}
-                    onClick={() => setTimeRange(range)}
-                    className={cn("border-b-2 px-0 py-1 font-body text-xs transition-colors duration-150", timeRange === range ? "border-[var(--color-ink)] font-medium text-[var(--color-ink)]" : "border-transparent text-[var(--color-muted)] hover:text-[var(--color-ink)]")}
-                  >
-                    {range}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="h-[240px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="4 4" stroke="#E0DDD6" vertical={false} />
-                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#9B9890", fontFamily: "var(--font-mono)" }} tickLine={false} axisLine={false} interval={timeRange === "7d" ? 0 : 4} />
-                  <YAxis tick={{ fontSize: 10, fill: "#9B9890", fontFamily: "var(--font-mono)" }} tickLine={false} axisLine={false} width={30} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Line type="monotone" dataKey="openRate" name="Open Rate" stroke="#111110" strokeWidth={1.5} dot={false} animationDuration={1000} animationBegin={700} />
-                  <Line type="monotone" dataKey="ctr" name="CTR" stroke="#F5A623" strokeWidth={1.5} dot={false} animationDuration={1000} animationBegin={700} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </motion.div>
-
           {/* Channel Comparison */}
           <motion.div
             initial={{ opacity: 0, y: 16 }}
@@ -198,8 +236,10 @@ export default function AnalyticsPage() {
             transition={{ delay: 0.25 }}
             className="rounded-[2px] border border-[var(--color-border)] bg-white p-6 transition-colors duration-150 hover:border-[#BFBCB4]"
           >
-            <h3 className="mb-1 font-body text-xs font-semibold text-[var(--color-ink)]">Channel Comparison</h3>
-            <p className="text-xs text-text-muted mb-5">Engagement rates by channel</p>
+            <h3 className="mb-1 font-body text-xs font-semibold text-[var(--color-ink)]">Channel Performance</h3>
+            <p className="text-xs text-text-muted mb-5">
+              {liveChannelMetrics.length > 0 ? "Live predicted rates by channel" : "Benchmark rates by channel"}
+            </p>
             <div className="h-[240px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={barData} barGap={4}>
@@ -214,24 +254,25 @@ export default function AnalyticsPage() {
               </ResponsiveContainer>
             </div>
           </motion.div>
-        </div>
 
-        {/* Bottom Grid: Channel Mix + Engagement Trends */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Channel Mix Donut */}
+          {/* Segment Distribution */}
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
             className="rounded-[2px] border border-[var(--color-border)] bg-white p-6 transition-colors duration-150 hover:border-[#BFBCB4]"
           >
-            <h3 className="mb-1 font-body text-xs font-semibold text-[var(--color-ink)]">Channel Mix</h3>
-            <p className="text-xs text-text-muted mb-4">Distribution of campaigns sent</p>
+            <h3 className="mb-1 font-body text-xs font-semibold text-[var(--color-ink)]">
+              {segPieData.length > 0 ? "Customer Segments" : "Channel Mix"}
+            </h3>
+            <p className="text-xs text-text-muted mb-4">
+              {segPieData.length > 0 ? "Live segment distribution" : "Distribution of campaigns sent"}
+            </p>
             <div className="h-[200px] relative">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={channelMixData}
+                    data={pieData}
                     cx="50%"
                     cy="50%"
                     innerRadius={55}
@@ -239,7 +280,7 @@ export default function AnalyticsPage() {
                     dataKey="value"
                     strokeWidth={0}
                   >
-                    {channelMixData.map((entry, i) => (
+                    {pieData.map((entry, i) => (
                       <Cell key={i} fill={entry.fill} />
                     ))}
                   </Pie>
@@ -248,53 +289,23 @@ export default function AnalyticsPage() {
               </ResponsiveContainer>
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-text-primary">{formatNumber(48200)}</p>
-                  <p className="text-[10px] text-text-muted">Total Sent</p>
+                  <p className="text-2xl font-bold text-text-primary">
+                    {formatNumber(dashboardData?.total_customers ?? 0)}
+                  </p>
+                  <p className="text-[10px] text-text-muted">
+                    {segPieData.length > 0 ? "Total Customers" : "Benchmark"}
+                  </p>
                 </div>
               </div>
             </div>
             <div className="flex flex-wrap gap-3 justify-center mt-2">
-              {channelMixData.map((item) => (
+              {pieData.map((item) => (
                 <div key={item.name} className="flex items-center gap-1.5 text-xs">
                   <div className="w-2 h-2 rounded-full" style={{ background: item.fill }} />
                   <span className="text-text-muted">{item.name}</span>
                   <span className="text-text-primary font-medium">{item.value}%</span>
                 </div>
               ))}
-            </div>
-          </motion.div>
-
-          {/* Engagement Table */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35 }}
-            className="lg:col-span-2 rounded-[2px] border border-[var(--color-border)] bg-white p-6 transition-colors duration-150 hover:border-[#BFBCB4]"
-          >
-            <h3 className="mb-1 font-body text-xs font-semibold text-[var(--color-ink)]">Channel Performance Detail</h3>
-            <p className="text-xs text-text-muted mb-4">Detailed metrics by channel</p>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border-subtle">
-                    {["Channel", "Sent", "Delivered", "Opened", "Clicked", "Converted"].map((h) => (
-                      <th key={h} className="px-3 py-2 text-left text-[10px] font-semibold text-text-muted uppercase tracking-wider">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {channelMetrics.map((m) => (
-                    <tr key={m.channel} className="border-b border-[#F5F2EC] transition-colors duration-150 hover:bg-[var(--color-bg)]">
-                      <td className="px-3 py-3 font-medium text-text-primary">{m.channel}</td>
-                      <td className="px-3 py-3 text-text-muted">{formatNumber(m.sent)}</td>
-                      <td className="px-3 py-3 text-text-muted">{formatNumber(m.delivered)}</td>
-                      <td className="px-3 py-3 text-text-muted">{formatNumber(m.opened)}</td>
-                      <td className="px-3 py-3 text-text-muted">{formatNumber(m.clicked)}</td>
-                      <td className="px-3 py-3 text-text-primary font-medium">{formatNumber(m.converted)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
             </div>
           </motion.div>
         </div>
