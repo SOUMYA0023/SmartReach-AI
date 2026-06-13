@@ -10,6 +10,8 @@ celery_app.conf.update(
     result_serializer="json",
     timezone="UTC",
     enable_utc=True,
+    task_default_queue="crm_queue",
+    imports=["app.workers.campaign_tasks", "app.workers.webhook_tasks"],
     beat_schedule={
         "refresh-rfm-segments": {
             "task": "app.workers.campaign_tasks.refresh_rfm_segments",

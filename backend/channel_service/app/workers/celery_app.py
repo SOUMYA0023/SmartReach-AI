@@ -9,6 +9,8 @@ celery_app.conf.update(
     result_serializer="json",
     timezone="UTC",
     enable_utc=True,
+    task_default_queue="channel_queue",
+    imports=["app.workers.delivery_tasks"],
 )
 
 celery_app.autodiscover_tasks(["app.workers"])

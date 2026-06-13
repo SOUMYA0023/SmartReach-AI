@@ -121,7 +121,6 @@ async def get_campaign_analytics(
     pva = data.pop("predicted_vs_actual")
     return CampaignAnalyticsResponse(
         **data,
-        campaign_id=campaign_id,
         predicted_vs_actual={k: PredictedVsActual(**v) for k, v in pva.items()},
     )
 

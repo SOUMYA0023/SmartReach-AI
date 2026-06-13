@@ -14,9 +14,10 @@ class GeminiEmbedder:
         result = await loop.run_in_executor(
             None,
             lambda: genai.embed_content(
-                model="models/text-embedding-004",
+                model="models/gemini-embedding-2",
                 content=text,
                 task_type=task_type,
+                output_dimensionality=768,
             ),
         )
         return result["embedding"]
